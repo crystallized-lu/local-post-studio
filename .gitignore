@@ -1,0 +1,10 @@
+node_modules/
+.env
+.env.*
+*.local.json
+exports/
+.DS_Store
+
+workspaces/
+workspaces.json
+docs/decision-log.md

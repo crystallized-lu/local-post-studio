@@ -1,0 +1,465 @@
+{
+  "version": 1,
+  "timezone": "Europe/Luxembourg",
+  "fonts": [
+    {
+      "family": "Fraunces",
+      "src": "fonts/Fraunces[SOFT,WONK,opsz,wght].ttf",
+      "weight": "100 900",
+      "style": "normal"
+    },
+    {
+      "family": "Fraunces",
+      "src": "fonts/Fraunces-Italic[SOFT,WONK,opsz,wght].ttf",
+      "weight": "100 900",
+      "style": "italic"
+    },
+    {
+      "family": "DM Sans",
+      "src": "fonts/DMSans[opsz,wght].ttf",
+      "weight": "100 900",
+      "style": "normal"
+    },
+    {
+      "family": "Caveat",
+      "src": "fonts/Caveat[wght].ttf",
+      "weight": "100 900",
+      "style": "normal"
+    }
+  ],
+  "brand": {
+    "name": "Atelier Lehm",
+    "handle": "@atelierlehm",
+    "voice": {
+      "summary": "A small fictional ceramics studio in Remich. Warm, unhurried, a little wry. Talks about process more than product.",
+      "do": [
+        "Short sentences",
+        "Name the material and the hands",
+        "One Luxembourgish greeting now and then (Moien!)"
+      ],
+      "avoid": [
+        "Hype words (amazing, game-changer)",
+        "Urgency tricks",
+        "More than 5 hashtags"
+      ],
+      "address": "you",
+      "languages": [
+        "en",
+        "fr"
+      ]
+    },
+    "tokens": {
+      "colors": {
+        "bg": "#F3ECE3",
+        "surface": "#FBF8F3",
+        "text": "#2B211B",
+        "muted": "#6F5F52",
+        "accent": "#B4532A",
+        "accent2": "#33402F"
+      },
+      "fonts": {
+        "display": "Fraunces",
+        "body": "DM Sans",
+        "accent": "Caveat"
+      },
+      "type": {
+        "displaySize": 92,
+        "bodySize": 30,
+        "displayWeight": 500,
+        "tracking": -0.01,
+        "lineHeight": 1.04,
+        "uppercase": false
+      },
+      "shape": {
+        "radius": 28,
+        "border": 0,
+        "shadow": 0.12
+      },
+      "layout": {
+        "padding": 84,
+        "align": "left",
+        "titleWidth": 1,
+        "bodyWidth": 1
+      },
+      "texture": {
+        "grain": 0.06,
+        "overlay": 0.45,
+        "imageSaturation": 0.95
+      },
+      "logo": {
+        "text": "atelier lehm",
+        "src": "",
+        "size": 1,
+        "position": "auto"
+      }
+    },
+    "sources": [
+      "Synthetic demo brand. Photos: WordPress Photo Directory, CC0."
+    ]
+  },
+  "templates": [
+    {
+      "id": "photo-caption",
+      "name": "Photo + caption",
+      "logo": "top-right",
+      "logoTone": "light",
+      "fields": [
+        {
+          "key": "eyebrow",
+          "label": "Small label"
+        },
+        {
+          "key": "title",
+          "label": "Headline"
+        },
+        {
+          "key": "body",
+          "label": "Line under headline",
+          "multiline": true
+        }
+      ],
+      "sample": {
+        "fields": {
+          "eyebrow": "From the studio",
+          "title": "Slow hands, steady wheel",
+          "body": "Every cup starts as a lump of Moselle clay."
+        },
+        "image": {
+          "src": "images/cups-row.jpg"
+        }
+      },
+      "html": "<div style=\"position:absolute;inset:0;background:var(--text)\"><img data-image alt=\"\" style=\"position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:saturate(var(--sat))\"><div style=\"position:absolute;inset:0;background:linear-gradient(to top, rgba(0,0,0,calc(var(--overlay) + .25)) 0%, rgba(0,0,0,var(--overlay)) 38%, rgba(0,0,0,0) 72%)\"></div><div style=\"position:absolute;left:0;right:0;bottom:0;padding:var(--pad);display:flex;flex-direction:column;gap:calc(var(--k) * 26px);text-align:var(--align);align-items:var(--justify);color:#fff\"><span data-field=\"eyebrow\" style=\"font:600 calc(var(--body-size) * .72)/1 var(--font-body);letter-spacing:.14em;text-transform:uppercase;background:var(--accent);color:var(--on-accent);padding:.6em 1em;border-radius:var(--radius)\"></span><h1 data-field=\"title\" style=\"font-family:var(--font-display);font-size:var(--display-size);font-weight:var(--display-weight);line-height:var(--line-height);letter-spacing:var(--tracking);text-transform:var(--case);max-width:min(100%, calc(14ch * var(--title-w, 1)))\"></h1><p data-field=\"body\" style=\"font:400 var(--body-size)/1.4 var(--font-body);opacity:.9;max-width:min(100%, calc(30ch * var(--body-w, 1)))\"></p></div></div>"
+    },
+    {
+      "id": "quote",
+      "name": "Quote",
+      "logo": "bottom-right",
+      "fields": [
+        {
+          "key": "title",
+          "label": "Quote",
+          "multiline": true
+        },
+        {
+          "key": "body",
+          "label": "Who said it"
+        }
+      ],
+      "sample": {
+        "fields": {
+          "title": "The clay always tells you when you're rushing.",
+          "body": "Overheard at Thursday class"
+        }
+      },
+      "html": "<div style=\"position:absolute;inset:0;background:var(--bg);color:var(--text);padding:var(--pad);display:flex;flex-direction:column;justify-content:center;align-items:var(--justify);text-align:var(--align);gap:calc(var(--k) * 40px)\"><div style=\"font-family:var(--font-display);font-size:calc(var(--display-size) * 2.4);line-height:1;height:.5em;color:var(--accent)\">&#8220;</div><h1 data-field=\"title\" style=\"font-family:var(--font-display);font-size:calc(var(--display-size) * .8);font-weight:var(--display-weight);line-height:calc(var(--line-height) + .1);letter-spacing:var(--tracking);max-width:min(100%, calc(17ch * var(--title-w, 1)))\"></h1><div style=\"width:calc(var(--k) * 96px);height:max(4px, var(--border));background:var(--accent2)\"></div><p data-field=\"body\" style=\"font:italic 400 calc(var(--body-size) * 1.5)/1.2 var(--font-accent);color:var(--muted)\"></p></div>"
+    },
+    {
+      "id": "announcement",
+      "name": "Announcement / event",
+      "fields": [
+        {
+          "key": "eyebrow",
+          "label": "Date or label"
+        },
+        {
+          "key": "title",
+          "label": "Headline"
+        },
+        {
+          "key": "body",
+          "label": "Details",
+          "multiline": true
+        },
+        {
+          "key": "cta",
+          "label": "Button"
+        }
+      ],
+      "sample": {
+        "fields": {
+          "eyebrow": "Sat 10 + Sun 11 Oct",
+          "title": "Open studio weekend",
+          "body": "Rue du Pont, Remich. Coffee in handmade cups.",
+          "cta": "Come by"
+        },
+        "image": {
+          "src": "images/thrown-pot.jpg"
+        }
+      },
+      "html": "<div style=\"position:absolute;inset:0;background:var(--bg);color:var(--text);padding:var(--pad);display:flex;flex-direction:column;gap:calc(var(--k) * 44px)\"><div style=\"flex:1;min-height:0;border-radius:var(--radius);overflow:hidden;border:var(--border) solid var(--text);box-shadow:var(--shadow)\"><img data-image alt=\"\" style=\"display:block;width:100%;height:100%;object-fit:cover;filter:saturate(var(--sat))\"></div><div style=\"display:flex;gap:calc(var(--k) * 40px);align-items:flex-end;justify-content:space-between\"><div style=\"display:flex;flex-direction:column;gap:calc(var(--k) * 14px);min-width:0\"><span data-field=\"eyebrow\" style=\"font:700 calc(var(--body-size) * .75)/1 var(--font-body);letter-spacing:.14em;text-transform:uppercase;color:var(--accent)\"></span><h1 data-field=\"title\" style=\"font-family:var(--font-display);font-size:calc(var(--display-size) * .78);font-weight:var(--display-weight);line-height:var(--line-height);letter-spacing:var(--tracking);text-transform:var(--case)\"></h1><p data-field=\"body\" style=\"font:400 var(--body-size)/1.35 var(--font-body);color:var(--muted)\"></p></div><div style=\"flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:calc(var(--k) * 22px)\"><span data-logo style=\"color:var(--text)\"></span><span data-field=\"cta\" style=\"font:600 var(--body-size)/1 var(--font-body);background:var(--accent);color:var(--on-accent);padding:.8em 1.2em;border-radius:999px;white-space:nowrap\"></span></div></div></div>"
+    },
+    {
+      "id": "tips-list",
+      "name": "Tips / steps list",
+      "logo": "top-right",
+      "fields": [
+        {
+          "key": "eyebrow",
+          "label": "Small label"
+        },
+        {
+          "key": "title",
+          "label": "Headline"
+        },
+        {
+          "key": "body",
+          "label": "List (one item per line)",
+          "multiline": true
+        }
+      ],
+      "sample": {
+        "fields": {
+          "eyebrow": "Care notes",
+          "title": "Make a handmade mug last",
+          "body": "Warm it before boiling water\nHand wash the unglazed foot\nStore it upright, never stacked"
+        }
+      },
+      "html": "<div style=\"position:absolute;inset:0;background:var(--surface);color:var(--text);padding:var(--pad);display:flex;flex-direction:column;justify-content:center;gap:calc(var(--k) * 40px)\"><span data-field=\"eyebrow\" style=\"font:700 calc(var(--body-size) * .75)/1 var(--font-body);letter-spacing:.14em;text-transform:uppercase;color:var(--accent)\"></span><h1 data-field=\"title\" style=\"font-family:var(--font-display);font-size:calc(var(--display-size) * .74);font-weight:var(--display-weight);line-height:var(--line-height);letter-spacing:var(--tracking);text-transform:var(--case);max-width:min(100%, calc(16ch * var(--title-w, 1)))\"></h1><ol data-list=\"body\" style=\"list-style:none;padding:0;display:flex;flex-direction:column;gap:calc(var(--k) * 20px)\"><li style=\"display:flex;gap:calc(var(--k) * 26px);align-items:baseline;font:400 var(--body-size)/1.35 var(--font-body);padding:calc(var(--k) * 26px) calc(var(--k) * 30px);background:var(--bg);border-radius:var(--radius);border:var(--border) solid var(--accent)\"><b data-index style=\"font-family:var(--font-display);font-weight:var(--display-weight);color:var(--accent);font-size:calc(var(--body-size) * 1.4);min-width:1.1em\"></b><span data-item></span></li></ol></div>"
+    },
+    {
+      "id": "stat",
+      "name": "Big number",
+      "logo": "bottom-right",
+      "logoTone": "light",
+      "fields": [
+        {
+          "key": "eyebrow",
+          "label": "Small label"
+        },
+        {
+          "key": "title",
+          "label": "The number"
+        },
+        {
+          "key": "body",
+          "label": "What it means",
+          "multiline": true
+        }
+      ],
+      "sample": {
+        "fields": {
+          "eyebrow": "This year so far",
+          "title": "412",
+          "body": "mugs thrown, trimmed, glazed and fired in Remich."
+        }
+      },
+      "html": "<div style=\"position:absolute;inset:0;background:var(--accent2);color:var(--on-accent2);padding:var(--pad);display:flex;flex-direction:column;justify-content:center;align-items:var(--justify);text-align:var(--align);gap:calc(var(--k) * 24px)\"><span data-field=\"eyebrow\" style=\"font:700 calc(var(--body-size) * .75)/1 var(--font-body);letter-spacing:.14em;text-transform:uppercase;opacity:.8\"></span><div data-field=\"title\" style=\"font-family:var(--font-display);font-size:calc(var(--display-size) * 3);font-weight:var(--display-weight);line-height:.9;letter-spacing:-.03em\"></div><div style=\"width:calc(var(--k) * 96px);height:max(6px, var(--border));background:var(--accent)\"></div><p data-field=\"body\" style=\"font:400 calc(var(--body-size) * 1.2)/1.35 var(--font-body);max-width:min(100%, calc(22ch * var(--body-w, 1)))\"></p></div>"
+    },
+    {
+      "id": "statement",
+      "name": "Bold statement",
+      "logo": "bottom-left",
+      "logoTone": "light",
+      "fields": [
+        {
+          "key": "title",
+          "label": "Statement",
+          "multiline": true
+        },
+        {
+          "key": "cta",
+          "label": "Small line underneath"
+        }
+      ],
+      "sample": {
+        "fields": {
+          "title": "Imperfect on purpose.",
+          "cta": "Seconds sale, this Saturday"
+        }
+      },
+      "html": "<div style=\"position:absolute;inset:0;background:var(--accent);color:var(--on-accent);padding:var(--pad);display:flex;flex-direction:column;justify-content:center;align-items:var(--justify);text-align:var(--align);gap:calc(var(--k) * 36px)\"><h1 data-field=\"title\" style=\"font-family:var(--font-display);font-size:calc(var(--display-size) * 1.35);font-weight:var(--display-weight);line-height:var(--line-height);letter-spacing:var(--tracking);text-transform:var(--case);max-width:min(100%, calc(11ch * var(--title-w, 1)))\"></h1><p data-field=\"cta\" style=\"font:400 calc(var(--body-size) * 1.6)/1.1 var(--font-accent)\"></p></div>"
+    },
+    {
+      "id": "date-card",
+      "name": "Date / occasion",
+      "logo": "top-right",
+      "fields": [
+        {
+          "key": "big",
+          "label": "Day number"
+        },
+        {
+          "key": "eyebrow",
+          "label": "Month"
+        },
+        {
+          "key": "title",
+          "label": "Occasion"
+        },
+        {
+          "key": "body",
+          "label": "Line",
+          "multiline": true
+        }
+      ],
+      "sample": {
+        "fields": {
+          "big": "6",
+          "eyebrow": "December",
+          "title": "Kleeschen is coming",
+          "body": "Kids' glazing workshop, 10:00. Bring an apron."
+        }
+      },
+      "html": "<div style=\"position:absolute;inset:0;background:var(--bg);color:var(--text);padding:var(--pad);display:flex;flex-direction:column;justify-content:space-between\"><div style=\"display:flex;align-items:flex-end;gap:calc(var(--k) * 24px)\"><div data-field=\"big\" style=\"font-family:var(--font-display);font-size:calc(var(--display-size) * 3.4);font-weight:var(--display-weight);line-height:.8;color:var(--accent);letter-spacing:-.04em\"></div><div data-field=\"eyebrow\" style=\"font:400 calc(var(--body-size) * 2)/1 var(--font-accent);color:var(--accent2);padding-bottom:.2em\"></div></div><div style=\"display:flex;flex-direction:column;gap:calc(var(--k) * 20px);border-top:max(2px, var(--border)) solid var(--text);padding-top:calc(var(--k) * 36px)\"><h1 data-field=\"title\" style=\"font-family:var(--font-display);font-size:calc(var(--display-size) * .82);font-weight:var(--display-weight);line-height:var(--line-height);letter-spacing:var(--tracking);text-transform:var(--case)\"></h1><p data-field=\"body\" style=\"font:400 var(--body-size)/1.35 var(--font-body);color:var(--muted);max-width:min(100%, calc(30ch * var(--body-w, 1)))\"></p></div></div>"
+    },
+    {
+      "id": "arch-photo",
+      "name": "Arched photo + words",
+      "logo": "bottom-right",
+      "fields": [
+        {
+          "key": "title",
+          "label": "Headline"
+        },
+        {
+          "key": "body",
+          "label": "Line",
+          "multiline": true
+        }
+      ],
+      "sample": {
+        "fields": {
+          "title": "Fired at 1240°C",
+          "body": "Stoneware that goes from oven to table."
+        },
+        "image": {
+          "src": "images/hand-clay-pot.jpg"
+        }
+      },
+      "html": "<div style=\"position:absolute;inset:0;background:var(--surface);color:var(--text);padding:var(--pad);display:flex;flex-direction:column;align-items:center;text-align:center;gap:calc(var(--k) * 40px)\"><div style=\"flex:1;min-height:0;aspect-ratio:3/4;max-width:100%;border-radius:999px 999px var(--radius) var(--radius);overflow:hidden;border:var(--border) solid var(--accent);box-shadow:var(--shadow)\"><img data-image alt=\"\" style=\"display:block;width:100%;height:100%;object-fit:cover;filter:saturate(var(--sat))\"></div><div style=\"display:flex;flex-direction:column;gap:calc(var(--k) * 12px);align-items:center\"><h1 data-field=\"title\" style=\"font-family:var(--font-display);font-size:calc(var(--display-size) * .7);font-weight:var(--display-weight);line-height:var(--line-height);letter-spacing:var(--tracking);text-transform:var(--case)\"></h1><p data-field=\"body\" style=\"font:400 var(--body-size)/1.35 var(--font-body);color:var(--muted)\"></p></div></div>"
+    }
+  ],
+  "imageSources": {
+    "order": [
+      "local",
+      "openverse",
+      "pexels",
+      "url"
+    ],
+    "folders": [
+      "images"
+    ],
+    "notes": "Own studio photos first. Stock only for texture shots, never for 'our work'."
+  },
+  "calendar": [
+    {
+      "date": "2026-10-10",
+      "title": "World Mental Health Day",
+      "kind": "observance",
+      "note": "Only if there's a genuine angle (slow making, hands busy, mind quiet)."
+    },
+    {
+      "date": "2026-11-01",
+      "title": "All Saints' Day",
+      "kind": "holiday",
+      "note": "Allerhellgen / Toussaint. Public holiday. Studio closed."
+    },
+    {
+      "date": "2026-12-06",
+      "title": "Saint Nicholas",
+      "kind": "holiday",
+      "note": "Kleeschen / Nikloosdag. Big for families in Luxembourg; not a public holiday."
+    },
+    {
+      "date": "2026-12-25",
+      "title": "Christmas Day",
+      "kind": "holiday",
+      "note": "Chrëschtdag / Noël."
+    },
+    {
+      "date": "2027-06-23",
+      "title": "National Day",
+      "kind": "holiday",
+      "note": "Nationalfeierdag / Fête nationale. Eve (22 June): torchlight procession and fireworks in the city."
+    }
+  ],
+  "posts": [
+    {
+      "id": "2026-10-08-open-studio",
+      "date": "2026-10-08",
+      "time": "09:00",
+      "platforms": [
+        "instagram",
+        "facebook"
+      ],
+      "template": "announcement",
+      "format": "portrait",
+      "fields": {
+        "eyebrow": "Sat 10 + Sun 11 Oct",
+        "title": "Open studio weekend",
+        "body": "Rue du Pont, Remich. Coffee in handmade cups.",
+        "cta": "Come by"
+      },
+      "image": {
+        "src": "images/thrown-pot.jpg",
+        "credit": "Photo: WordPress Photo Directory (CC0)"
+      },
+      "caption": "Moien! Our doors are open this weekend, 10:00 to 17:00. Watch a pot come off the wheel, try your hand at trimming, drink your coffee out of something we made.\n\nRue du Pont, Remich. No booking needed.\n\n#luxembourg #ceramics #remich",
+      "overrides": {},
+      "status": "draft"
+    },
+    {
+      "id": "2026-10-14-mug-care",
+      "date": "2026-10-14",
+      "time": "12:30",
+      "platforms": [
+        "instagram",
+        "linkedin"
+      ],
+      "template": "tips-list",
+      "format": "portrait",
+      "fields": {
+        "eyebrow": "Care notes",
+        "title": "Make a handmade mug last",
+        "body": "Warm it before boiling water\nHand wash the unglazed foot\nStore it upright, never stacked"
+      },
+      "image": {},
+      "caption": "Three habits that keep a handmade mug around for decades. Save this for the next time someone gifts you one.\n\n#ceramics #handmade",
+      "overrides": {},
+      "status": "approved"
+    },
+    {
+      "id": "2026-10-21-rushing",
+      "date": "2026-10-21",
+      "time": "18:00",
+      "platforms": [
+        "instagram"
+      ],
+      "template": "quote",
+      "format": "square",
+      "fields": {
+        "title": "The clay always tells you when you're rushing.",
+        "body": "Overheard at Thursday class"
+      },
+      "image": {},
+      "caption": "",
+      "overrides": {
+        "colors": {
+          "bg": "#E9DCCB"
+        }
+      },
+      "status": "idea"
+    },
+    {
+      "id": "2026-12-06-kleeschen",
+      "date": "2026-12-01",
+      "time": "09:00",
+      "platforms": [
+        "instagram",
+        "facebook"
+      ],
+      "template": "date-card",
+      "format": "portrait",
+      "fields": {
+        "big": "6",
+        "eyebrow": "December",
+        "title": "Kleeschen glazing morning",
+        "body": "Kids paint a cup for Saint Nicholas. 10:00, six places left."
+      },
+      "image": {},
+      "caption": "Kleeschen is on his way. On 6 December, kids aged 6+ can glaze a cup to put out for him. 10:00 to 11:30, €25, aprons provided.\n\nBook by message.",
+      "overrides": {},
+      "status": "draft"
+    }
+  ]
+}
