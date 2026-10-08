@@ -143,6 +143,11 @@ details summary { cursor: pointer; color: var(--ui-muted); }
 .thumbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .thumbs button { padding: 0; aspect-ratio: 1; overflow: hidden; border-radius: 4px; position: relative; }
 .thumbs img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumbs .tw { position: relative; aspect-ratio: 1; }
+.thumbs .tw > button:first-child { width: 100%; height: 100%; }
+.thumbs .del { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; aspect-ratio: auto; border-radius: 50%; border: 0; background: #b42318; color: #fff; font-size: 13px; font-weight: 700; line-height: 1; display: grid; place-items: center; }
+.thumbs .del[hidden] { display: none; }
+.thumbs h4.cat { grid-column: 1 / -1; margin: 8px 0 0; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--ui-muted); }
 .thumbs .lic { position: absolute; bottom: 0; left: 0; right: 0; font-size: 9px; background: rgba(0,0,0,.6); color: #fff; padding: 2px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .drop { border: 1.5px dashed var(--ui-input); border-radius: 4px; padding: 16px; text-align: center; color: var(--ui-muted); }
 .drop.over { border-color: var(--purple); color: var(--purple); }
@@ -213,6 +218,12 @@ body.nows .layout { grid-template-columns: 1fr; }
   nav.rail button { min-width: 74px; border-left: 0; border-bottom: 3px solid transparent; } nav.rail button[aria-current=true] { border-left: 0; border-bottom-color: var(--purple); }
   .panel { width: auto; } .palette { grid-template-columns: repeat(3, 1fr); }
 }
+.slides { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; margin: 8px 0; }
+.slides .slide { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 4px; border: 2px solid transparent; border-radius: 6px; background: transparent; color: var(--ui-muted); font-size: 12px; }
+.slides .slide[aria-current=true] { border-color: var(--purple); color: var(--ui-text); }
+.slides .slide .preview { pointer-events: none; box-shadow: 0 0 0 1px var(--ui-line); }
+.slides select.mini { width: auto; max-width: 210px; }
+.slides .slide-tools { display: flex; flex-wrap: wrap; gap: 6px; margin-left: 6px; }
 </style>
 </head>
 <body>
@@ -296,6 +307,7 @@ let calMonth = null;      // Date at first of shown month
 let imageTarget = null; // set when 'Choose from Images' was pressed on a named frame
 let selectedImage = null; // { src, credit, previewUrl } chosen in Images tab
 let imgSource = 'local';
+let imgDelete = false; // delete mode in the Images tab: off until the person turns it on, and it resets when they leave the tab
 let lastWritten = '';     // text we last wrote to disk, to tell our writes from the AI's
 let lastModified = 0;
 const urlCache = new Map();
@@ -447,6 +459,19 @@ async function fetchBlob(url) { try { const r = await fetch(url, { mode: 'cors' 
 
 /* ───────────────────────── rendering a post ───────────────────────── */
 function tplFor(post) { return ws.templates.find((t) => t.id === post.template) || ws.templates[0]; }
+/* Carousels: the post itself is slide 1 and post.slides holds any further slides, each { template, fields, image, images }.
+   Format, overrides, caption, date and platforms are shared by every slide, so a post without slides is a one-slide post. */
+const MAX_SLIDES = 10; // Instagram carousels take up to 10 images (PostProxy's Instagram page, checked 2026-10-08)
+const SLIDE_KEYS = ['template', 'fields', 'image', 'images'];
+const rawPost = (p) => p.__raw || p;
+const slideCount = (p) => 1 + (rawPost(p).slides || []).length;
+let slideAt = { id: null, i: 0 }; // which slide of which post the editor shows
+const activeSlide = (p) => (slideAt.id === p.id ? Math.min(slideAt.i, (p.slides || []).length) : 0);
+const slideData = (r) => ({ template: r.template, fields: r.fields, image: r.image, images: r.images });
+/** A copy of slide i that looks like a whole post, for drawing and exporting. */
+const slideView = (p, i) => { const r = rawPost(p); return i ? { ...r, ...r.slides[i - 1] } : r; };
+/** Export file name: <id>.png for one slide, <id>-1.png, <id>-2.png… for a carousel. Must match exportNames() in scripts/postproxy.mjs. */
+const exportFile = (p, i) => fileId(rawPost(p).id) + (slideCount(p) > 1 ? '-' + (i + 1) : '') + '.png';
 function tplFields(tpl) { return (tpl.fields || []).map((f) => (typeof f === 'string' ? { key: f, label: f } : f)); }
 
 function setVars(el, t, w, hgt) {
@@ -588,17 +613,17 @@ function checkOverflow(el, box) {
     });
     box.dataset.overflow = over ? '1' : '';
     const flag = document.getElementById('overflowFlag');
-    if (flag && box.closest('#stage')) flag.hidden = !over;
+    if (flag && box.closest('#stage') && !box.dataset.thumb) flag.hidden = !over;
   });
 }
 
 /* ───────────────────────── stale copies ───────────────────────── */
 /* An export or a send is a snapshot. post.exported = { at, visual } is written by Export PNG; post.sent = { at, caption, date,
    time, platforms } is written by the AI when it schedules or publishes. A post with no snapshot is never flagged. */
-const visualKey = (p) => JSON.stringify([p.template, p.format, p.fields, p.image, p.images, p.overrides, ws.brand.tokens, tplFor(p)?.html]);
+const visualKey = (p) => JSON.stringify([p.template, p.format, p.fields, p.image, p.images, p.overrides, ws.brand.tokens, tplFor(p)?.html, ...(p.slides?.length ? [p.slides, p.slides.map((x) => tplFor(x)?.html)] : [])]); // slides only join the key when there are some, so older exports stay current
 function staleNotes(p) {
   const out = [];
-  const pngStale = p.exported?.visual && p.exported.visual !== visualKey(p);
+  const pngStale = p.exported?.visual && p.exported.visual !== visualKey(rawPost(p)); // the open slide's view would give another key
   const sent = p.sent, live = ['scheduled', 'published'].includes(p.status);
   const diffs = !sent ? [] : [['caption', 'caption'], ['date', 'date'], ['time', 'time']].filter(([k]) => (p[k] || '') !== (sent[k] || '')).map(([, l]) => l)
     .concat((p.platforms || []).join() !== (sent.platforms || []).join() ? ['platforms'] : []);
@@ -606,31 +631,35 @@ function staleNotes(p) {
   if (live && diffs.length) out.push(p.status === 'published'
     ? `Changed since it went out (${diffs.join(', ')}). The published post stays as it was; edits here only change your notes.`
     : `Changed since it was sent to PostProxy (${diffs.join(', ')}). PostProxy still has the old version. Tell your AI "update the scheduled post" and it will fix it.`);
-  if (pngStale) out.push(`The text or design on the image changed after you exported. exports/${fileId(p.id)}.png is out of date: press Export PNG again${live ? ', then ask your AI to update the scheduled post' : ''}.`);
+  if (pngStale) out.push(`The text or design on the image changed after you exported. ${slideCount(p) > 1 ? `exports/${fileId(p.id)}-1.png to -${slideCount(p)}.png are` : `exports/${fileId(p.id)}.png is`} out of date: press Export PNG again${live ? ', then ask your AI to update the scheduled post' : ''}.`);
   return out;
 }
 const staleBanner = (p) => { const n = staleNotes(p); return n.length ? h('div', { class: 'stale', role: 'status' }, h('b', {}, 'Out of date. '), n.join(' ')) : null; };
 
 /* ───────────────────────── export ───────────────────────── */
 async function exportPost(post) {
-  const { el, w, hgt, ready } = buildCanvas(post);
-  $('#offscreen').append(el);
+  const r = rawPost(post), n = slideCount(r);
   try {
-    await ready;
-    await document.fonts.ready;
-    const opts = { width: w, height: hgt, pixelRatio: 1, cacheBust: false };
-    await htmlToImage.toPng(el, opts); // first pass warms font and image caches
-    const blob = await htmlToImage.toBlob(el, opts);
-    const name = fileId(post.id) + '.png';
-    await writeFile(await dir.getDirectoryHandle('exports', { create: true }), name, blob);
-    toast(`Saved exports/${name}`);
-    post.exported = { at: new Date().toISOString(), visual: visualKey(post) };
-    if (post.status === 'approved') post.status = 'exported';
+    const out = await dir.getDirectoryHandle('exports', { create: true });
+    for (let i = 0; i < n; i++) { // one PNG per slide, in order
+      const { el, w, hgt, ready } = buildCanvas(slideView(r, i));
+      $('#offscreen').append(el);
+      try {
+        await ready;
+        await document.fonts.ready;
+        const opts = { width: w, height: hgt, pixelRatio: 1, cacheBust: false };
+        await htmlToImage.toPng(el, opts); // first pass warms font and image caches
+        await writeFile(out, exportFile(r, i), await htmlToImage.toBlob(el, opts));
+      } finally { el.remove(); }
+    }
+    toast(n > 1 ? `Saved ${n} slides into exports/ (${exportFile(r, 0)} to ${exportFile(r, n - 1)})` : `Saved exports/${exportFile(r, 0)}`);
+    r.exported = { at: new Date().toISOString(), visual: visualKey(r) };
+    if (r.status === 'approved') r.status = 'exported';
     changed();
   } catch (e) {
     console.error(e);
     toast('Export failed. Usually an image host that blocks copying: save the image into images/ and pick it from there.');
-  } finally { el.remove(); }
+  }
 }
 
 /* ───────────────────────── the workspace folder ───────────────────────── */
@@ -639,7 +668,7 @@ async function exportPost(post) {
 function validate(obj) {
   if (!isObj(obj) || !isObj(obj.brand) || !isObj(obj.brand.tokens) || !Array.isArray(obj.templates)) throw new Error('Not a workspace: needs brand.tokens and templates.');
   obj.posts ||= []; obj.calendar ||= []; obj.fonts ||= []; obj.imageSources ||= { order: ['local', 'openverse', 'pexels', 'url'] };
-  for (const p of obj.posts) { p.fields ||= {}; p.image ||= {}; p.overrides ||= {}; p.platforms ||= []; p.status ||= 'idea'; p.format ||= 'square'; }
+  for (const p of obj.posts) { p.fields ||= {}; p.image ||= {}; p.overrides ||= {}; p.platforms ||= []; p.status ||= 'idea'; p.format ||= 'square'; for (const sl of p.slides || []) { sl.template ||= p.template; sl.fields ||= {}; sl.image ||= {}; sl.images ||= {}; } }
   return obj;
 }
 function adopt(obj) {
@@ -811,7 +840,58 @@ function fontHelp() {
       h('span', { style: 'color:var(--ui-muted)' }, families().join(', ') || 'No fonts yet')));
 }
 
-function currentPost() { return ws.posts.find((p) => p.id === currentId); }
+function currentPost() {
+  const p = ws.posts.find((q) => q.id === currentId);
+  const i = p ? activeSlide(p) : 0;
+  if (!i) return p;
+  const sl = p.slides[i - 1]; // the editor and the controls read and write the open slide's template, fields and photos through this view
+  return new Proxy(p, {
+    get: (t, k) => (k === '__raw' ? t : SLIDE_KEYS.includes(k) ? sl[k] : t[k]),
+    set: (t, k, v) => { (SLIDE_KEYS.includes(k) ? sl : t)[k] = v; return true; },
+  });
+}
+function slideOps(p) {
+  const r = rawPost(p), i = activeSlide(r);
+  const list = () => [slideData(r), ...(r.slides || [])];
+  const put = (l, at) => { Object.assign(r, l[0]); r.slides = l.slice(1); if (!r.slides.length) delete r.slides; slideAt = { id: r.id, i: at }; changed(); render(); };
+  return {
+    add(tplId) { // tplId: the template for the new slide; omitted = same as the open slide
+      if (slideCount(r) >= MAX_SLIDES) return toast(`A carousel holds up to ${MAX_SLIDES} slides.`);
+      const tpl = ws.templates.find((t) => t.id === tplId) || tplFor(slideView(r, i)), l = list();
+      l.splice(i + 1, 0, { template: tpl.id, fields: structuredClone(tpl.sample?.fields || {}), image: structuredClone(tpl.sample?.image || {}), images: structuredClone(tpl.sample?.images || {}) });
+      put(l, i + 1);
+    },
+    copy() {
+      if (slideCount(r) >= MAX_SLIDES) return toast(`A carousel holds up to ${MAX_SLIDES} slides.`);
+      const l = list(); l.splice(i + 1, 0, structuredClone(l[i])); put(l, i + 1);
+    },
+    move(d) { const l = list(), j = i + d; if (j < 0 || j >= l.length) return; [l[i], l[j]] = [l[j], l[i]]; put(l, j); },
+    remove() {
+      if (slideCount(r) < 2 || !confirm(`Remove slide ${i + 1}?`)) return;
+      const l = list(); l.splice(i, 1); put(l, Math.min(i, l.length - 1));
+    },
+  };
+}
+function addSlidePicker(ops, label, title, disabled) { // one control: choose a template and the new slide is added with it
+  return h('select', { class: 'mini', 'aria-label': title, title, disabled, onchange: (e) => { const v = e.target.value; e.target.value = ''; if (v) ops.add(v); } },
+    h('option', { value: '' }, label), ws.templates.map((t) => h('option', { value: t.id }, t.name)));
+}
+function slideStrip(p) {
+  const r = rawPost(p), n = slideCount(r), cur = activeSlide(r), ops = slideOps(p);
+  if (n === 1) return h('div', { class: 'slides' }, addSlidePicker(ops, '+ Add a slide (carousel)…', 'Add a second slide to make this a carousel: choose its template'));
+  const bar = h('div', { class: 'slides', role: 'group', 'aria-label': 'Slides' });
+  for (let i = 0; i < n; i++) {
+    const pv = previewOf(slideView(r, i), 64); pv.dataset.thumb = '1';
+    bar.append(h('button', { class: 'slide', 'aria-current': i === cur ? 'true' : 'false', title: `Slide ${i + 1}`, 'aria-label': `Slide ${i + 1}${i === cur ? ' (open)' : ''}`, onclick: () => { slideAt = { id: r.id, i }; render(); } }, pv, h('span', {}, String(i + 1))));
+  }
+  bar.append(h('div', { class: 'slide-tools' },
+    addSlidePicker(ops, '+ Slide…', 'Add a slide after this one: choose its template', n >= MAX_SLIDES),
+    h('button', { class: 'mini', title: 'Duplicate this slide', onclick: () => ops.copy(), disabled: n >= MAX_SLIDES }, 'Duplicate'),
+    h('button', { class: 'mini', title: 'Move this slide earlier', 'aria-label': 'Move this slide earlier', onclick: () => ops.move(-1), disabled: cur === 0 }, '◀'),
+    h('button', { class: 'mini', title: 'Move this slide later', 'aria-label': 'Move this slide later', onclick: () => ops.move(1), disabled: cur === n - 1 }, '▶'),
+    h('button', { class: 'mini', title: 'Remove this slide', onclick: () => ops.remove() }, 'Remove')));
+  return bar;
+}
 function newPost(props = {}) {
   const tpl = ws.templates.find((t) => t.id === props.template) || ws.templates[0];
   const date = props.date || today();
@@ -831,7 +911,7 @@ function deletePost(p) {
     : p.status === 'scheduled' ? `Remove “${t}” from this workspace?\n\nIt is still scheduled in PostProxy and will still go out. Ask your AI to cancel it there too.`
     : `Delete “${t}”?`;
   if (!confirm(msg)) return;
-  ws.posts = ws.posts.filter((q) => q !== p);
+  ws.posts = ws.posts.filter((q) => q !== rawPost(p));
   if (currentId === p.id) currentId = ws.posts[0]?.id || null;
   changed(); render();
 }
@@ -999,7 +1079,7 @@ function postEditor(p) {
     })());
   box.querySelector('[data-sec=Status]').append(
     h('div', { class: 'inline', style: 'margin-top:16px' },
-      h('button', { onclick: () => { const c = structuredClone(p); c.status = 'draft'; delete c.postproxy; newPost(c); } }, 'Duplicate this post'),
+      h('button', { onclick: () => { const c = structuredClone(rawPost(p)); c.status = 'draft'; delete c.postproxy; newPost(c); } }, 'Duplicate this post'),
       h('button', { onclick: () => deletePost(p) }, 'Delete')));
   return box;
 }
@@ -1018,17 +1098,75 @@ function imagesPanel() {
   const status = h('div', { style: 'color:var(--ui-muted)' });
   const pick = (item) => async () => {
     status.textContent = 'Bringing the image in…';
-    let src = item.src;
-    if (item.blob) src = await importBlob(item.blob, item.name);
-    else if (item.download && dir) { const bl = await fetchBlob(item.download); if (bl) src = await importBlob(bl, item.name); }
+    let src = item.saved || item.src; // a photo already copied into images/ is reused, never copied twice
+    if (!item.saved) {
+      if (item.blob) src = await importBlob(item.blob, item.name);
+      else if (item.download && dir) { const bl = await fetchBlob(item.download); if (bl) src = await importBlob(bl, item.name); }
+    }
+    if (/^images\//.test(src || '')) item.saved = src;
     selectedImage = { src, credit: item.credit || '', previewUrl: item.thumb };
     const target = imageTarget;
     if (p) { if (target) { (p.images ||= {})[target] = { src, credit: item.credit || '' }; } else p.image = { src, credit: item.credit || '' }; changed(); }
     status.textContent = p ? `Set on "${p.fields.title || p.id}"${target ? ' (' + frameName(target) + ')' : ''}.` : 'Selected. Pick a post to use it.';
     renderSwatches(item.thumb);
+    refresh();
     if (p && target) { imageTarget = null; tab = 'posts'; render(); }
   };
-  const thumb = (item) => h('button', { title: item.credit || item.name, onclick: pick(item) }, h('img', { src: item.thumb, alt: item.alt || '', loading: 'lazy', onerror: (e) => e.target.closest('button').remove() }), item.lic && h('span', { class: 'lic' }, item.lic));
+  /* Select all saves every photo shown (My files) into images/ without touching the post. Delete mode adds an ✕ to photos that
+     live in the workspace's images/ folder; it is off until the person turns it on, and every delete asks first. */
+  const shown = [];
+  const selectAll = h('button', { onclick: async () => {
+    if (!dir) { toast('Open your workspace folder first.'); return; }
+    const todo = shown.filter((x) => x.btn.isConnected && !x.item.saved && x.item.blob);
+    selectAll.disabled = true; let done = 0, failed = 0;
+    for (const x of todo) {
+      status.textContent = `Saving ${done + failed + 1} of ${todo.length}…`;
+      try { x.item.saved = await importBlob(x.item.blob, x.item.name); done++; } catch (e) { console.error(e); failed++; }
+    }
+    status.textContent = `Saved ${done} photo${done === 1 ? '' : 's'} into images/${failed ? `; ${failed} could not be saved` : ''}. Click one to use it on ${p ? 'this post' : 'a post'}.`;
+    refresh();
+  } }, 'Select all');
+  const delBtn = h('button', { onclick: () => { imgDelete = !imgDelete; refresh(); } });
+  const selectBar = h('div', { class: 'inline', style: 'margin:8px 0', hidden: true }, selectAll, delBtn);
+  const delHint = h('p', { class: 'hint', hidden: true }, 'Delete mode is on. Click ✕ on a photo to remove it from your workspace folder. This cannot be undone.');
+  /** Every post or slide that points at this image, so the person is told before it disappears. */
+  const usedBy = (path) => ws.posts.filter((q) => [q, ...(q.slides || [])].some((sl) => sl.image?.src === path || Object.values(sl.images || {}).some((r) => r?.src === path)));
+  async function deleteImage(item) {
+    const path = item.saved, used = usedBy(path);
+    const msg = `Delete ${path}?\n\nThis removes the file from your workspace folder. It cannot be undone.` +
+      (used.length ? `\n\nIt is used by: ${used.map((q) => q.fields.title || q.id).join(', ')}. Those posts will show an empty photo until you pick another.` : '');
+    if (!confirm(msg)) return;
+    try {
+      const parts = path.split('/').slice(1); // below images/
+      let d = await dir.getDirectoryHandle('images');
+      for (const part of parts.slice(0, -1)) d = await d.getDirectoryHandle(part);
+      await d.removeEntry(parts.at(-1));
+      urlCache.delete(path); item.saved = '';
+      shown.filter((x) => x.item === item).forEach((x) => x.wrap.remove());
+      toast(`Deleted ${path}`);
+      refresh();
+    } catch (e) { console.error(e); toast('Could not delete that photo: ' + e.message); }
+  }
+  function refresh() {
+    const live = shown.filter((x) => x.wrap.isConnected); shown.length = 0; shown.push(...live);
+    const todo = live.filter((x) => !x.item.saved && x.item.blob).length;
+    selectBar.hidden = imgSource !== 'local' || !live.length; // stock photos are saved one at a time, so each keeps its credit
+    selectAll.disabled = !todo; selectAll.textContent = todo ? `Select all (${todo})` : 'All saved ✓';
+    delBtn.textContent = imgDelete ? 'Done deleting' : 'Delete photos…'; delBtn.className = imgDelete ? 'primary' : ''; delBtn.setAttribute('aria-pressed', String(imgDelete));
+    delHint.hidden = !imgDelete || selectBar.hidden;
+    live.forEach((x) => { x.del.hidden = !(imgDelete && x.item.saved); });
+    results.querySelectorAll('h4.cat').forEach((hd) => { if (!hd.nextElementSibling?.classList.contains('tw')) hd.remove(); }); // a folder with no photos left loses its heading
+  }
+  let refreshQueued = false;
+  const queueRefresh = () => { if (refreshQueued) return; refreshQueued = true; queueMicrotask(() => { refreshQueued = false; refresh(); }); };
+  const thumb = (item) => {
+    if (!item.blob && !item.download && /^images\//.test(item.src || '')) item.saved = item.src; // already in the workspace
+    const btn = h('button', { title: item.credit || item.name, onclick: () => (imgDelete ? toast('Delete mode is on: click ✕ to remove a photo, or press Done deleting.') : pick(item)()) }, h('img', { src: item.thumb, alt: item.alt || '', loading: 'lazy', onerror: (e) => { e.target.closest('.tw').remove(); queueRefresh(); } }), item.lic && h('span', { class: 'lic' }, item.lic));
+    const del = h('button', { class: 'del', hidden: true, title: 'Delete this photo from your workspace', 'aria-label': `Delete ${item.name || 'this photo'} from your workspace`, onclick: () => deleteImage(item) }, '✕');
+    const wrap = h('div', { class: 'tw' }, btn, del);
+    shown.push({ item, btn, del, wrap }); queueRefresh();
+    return wrap;
+  };
   const swatches = h('div', { class: 'swatches' });
   const target = h('select', { 'aria-label': 'Colour to replace' }, ['bg', 'surface', 'text', 'muted', 'accent', 'accent2'].map((c) => h('option', { value: c }, c)));
   async function renderSwatches(url) {
@@ -1043,8 +1181,8 @@ function imagesPanel() {
         ondrop: async (e) => { e.preventDefault(); e.currentTarget.classList.remove('over'); for (const f of e.dataTransfer.files) if (IMG_EXT.test(f.name)) results.prepend(thumb({ blob: f, name: f.name, thumb: URL.createObjectURL(f), credit: 'Own photo' })); } },
         'Drop photos here', h('br'), h('small', {}, 'from your computer, a synced Google Drive / OneDrive / Proton Drive / Dropbox folder, or a saved chat export')),
       h('div', { class: 'inline', style: 'margin-top:8px' },
-        h('button', { onclick: async () => { if (!dir) { toast('Open your workspace folder first.'); return; } listFolder(dir, 'images/', results, thumb, true); } }, 'Workspace images/'),
-        h('button', { onclick: async () => { if (!window.showDirectoryPicker) { toast('Folder browsing needs Chrome, Edge, Brave or Arc. Drag photos in instead.'); return; } try { const d = await showDirectoryPicker(); listFolder(d, '', results, thumb, false); } catch { } } }, 'Browse another folder…'))),
+        h('button', { onclick: async () => { if (!dir) { toast('Open your workspace folder first.'); return; } listFolder(dir, 'images/', results, thumb, true); } }, 'Workspace images/')),
+      h('p', { class: 'hint' }, 'Want to add a whole folder? Ask your AI agent. It can even sort the photos into categories to make Post Studio easier for you to navigate.')),
     url: () => h('form', { class: 'inline', style: 'flex-wrap:nowrap', onsubmit: async (e) => {
       e.preventDefault(); const url = e.target.u.value.trim(); if (!/^https:\/\//i.test(url)) { toast('Use an https:// link.'); return; }
       const bl = await fetchBlob(url);
@@ -1078,7 +1216,7 @@ function imagesPanel() {
     p ? h('div', { class: 'hint' }, 'Picking for: ', h('b', {}, p.fields.title || p.id)) : h('div', { class: 'hint' }, 'Select a post first to place images on it.'),
     pref && h('div', { style: 'color:var(--ui-muted);margin:8px 0' }, 'Your preferred order: ', pref, ws.imageSources.notes ? ` · ${ws.imageSources.notes}` : ''),
     h('div', { class: 'group', style: 'margin-top:10px' }, srcButtons),
-    sources[imgSource](), status, results,
+    sources[imgSource](), status, selectBar, delHint, results,
     bulkPrompt(),
     h('div', { class: 'group' }, h('h3', {}, 'Colours from the last picked image'), h('div', { class: 'inline', style: 'margin-bottom:6px;flex-wrap:nowrap' }, h('span', { style: 'color:var(--ui-muted);white-space:nowrap' }, 'Click a swatch to set'), target), swatches),
     h('p', { class: 'hint' }, h('b', {}, 'No AI-generated images here. '), 'Coded layouts and real photos use a small fraction of the energy of image generation, and they look like you. Ask your AI why if you are curious.'));
@@ -1123,6 +1261,7 @@ async function listFolder(d, prefix, results, thumb, inWorkspace) {
   let base = d;
   if (inWorkspace) { try { base = await d.getDirectoryHandle('images'); } catch { toast('No images/ folder yet.'); return; } }
   let n = 0;
+  const groups = new Map(); // folder → photos, so photos an agent sorted into folders show under that folder's name
   async function walk(dd, path, depth) {
     for await (const [name, hd] of dd.entries()) {
       if (n > 300 || name.startsWith('.')) continue;
@@ -1132,11 +1271,16 @@ async function listFolder(d, prefix, results, thumb, inWorkspace) {
         const f = await hd.getFile();
         const item = { thumb: URL.createObjectURL(f), name, credit: 'Own photo' };
         if (inWorkspace) item.src = prefix + path + name; else item.blob = f; // outside files get copied into images/
-        results.append(thumb(item));
+        (groups.get(path) || groups.set(path, []).get(path)).push(item);
       }
     }
   }
   await walk(base, '', 0);
+  const keys = [...groups.keys()].sort((x, y) => (x === '' ? -1 : y === '' ? 1 : x.localeCompare(y)));
+  for (const k of keys) {
+    if (keys.length > 1) results.append(h('h4', { class: 'cat' }, k ? k.replace(/\/$/, '') : 'Not sorted yet'));
+    groups.get(k).sort((x, y) => x.name.localeCompare(y.name)).forEach((item) => results.append(thumb(item)));
+  }
   if (!n) toast('No images found there.');
 }
 /* Dominant colours: coarse 4-bit buckets, then drop near-duplicates. Good enough to seed a palette. */
@@ -1172,7 +1316,7 @@ function schedulePrompt(p) {
   const title = p.fields.title || p.id, when = `${p.date} ${p.time}`;
   return p.status === 'failed'
     ? `My post "${title}" (id ${p.id}) failed to send${p.postproxy?.error ? ' with: ' + p.postproxy.error : ''}. Use the Local Post Studio skill (Step 9): work out why, fix it and show me a dry run before resending.`
-    : `Schedule my exported post "${title}" (id ${p.id}) for ${when} on ${p.platforms.join(', ') || 'my platforms'}. Use the Local Post Studio skill, Step 8: show me a dry run first and wait for my yes before sending. My workspace folder is "${dir ? dir.name : 'the one I have open'}".`;
+    : `Schedule my exported post "${title}" (id ${p.id}${slideCount(p) > 1 ? `, a carousel of ${slideCount(p)} slides` : ''}) for ${when} on ${p.platforms.join(', ') || 'my platforms'}. Use the Local Post Studio skill, Step 8: show me a dry run first and wait for my yes before sending. My workspace folder is "${dir ? dir.name : 'the one I have open'}".`;
 }
 function progressStrip(p) {
   const steps = ['Write', 'Approve', 'Export', 'Schedule'], st = p.status;
@@ -1203,9 +1347,10 @@ function drawStage() {
   const avail = Math.max(240, Math.min(stage.clientWidth - 48, (innerHeight - 160) * (w / hgt)));
   bar.append(h('span', { class: 'title' }, p.fields.title || p.id, ' ', h('span', { class: 'chip ' + p.status }, p.status)),
     h('span', { id: 'overflowFlag', class: 'warn', hidden: true }, 'Text runs off the edge: shorten it or lower the size'),
-    h('span', { style: 'color:var(--ui-muted)' }, `${p.format} ${w}×${hgt}`));
+    h('span', { style: 'color:var(--ui-muted)' }, `${p.format} ${w}×${hgt}${slideCount(p) > 1 ? ` · slide ${activeSlide(rawPost(p)) + 1} of ${slideCount(p)}` : ''}`));
   stage.append(progressStrip(p));
   const sb = staleBanner(p); if (sb) stage.append(sb);
+  stage.append(slideStrip(p));
   const pv = previewOf(p, avail);
   const fp = pv.querySelector('.float-photo');
   if (fp) { // corner handles to resize a floating photo; the preview only, never part of the export
@@ -1302,7 +1447,7 @@ function showControls(label, secName, ctlSel, tokenKeys) {
   toast(`Controls for ${label} are open on the left.`);
 }
 $('#stage').addEventListener('click', (e) => {
-  if (!ws || tab !== 'posts' || justDragged || e.target.closest('.fp-handle') || !e.target.closest('.preview > .canvas')) return;
+  if (!ws || tab !== 'posts' || justDragged || e.target.closest('.fp-handle') || !e.target.closest('.preview > .canvas') || e.target.closest('.slides')) return;
   const under = seeThrough(e) ? document.elementsFromPoint(e.clientX, e.clientY).find((n) => !n.closest('.float-photo') && n.closest('.preview > .canvas')) : null;
   const t = e.target.classList.contains('float-photo') ? e.target.querySelector('img') : e.target; // pointer capture retargets a click on a floating photo to its frame
   const hit = (under || t).closest('[data-field],[data-list],[data-image],[data-logo-box]');
@@ -1340,7 +1485,7 @@ let drag = null, justDragged = false;
 $('#stage').addEventListener('pointerdown', (e) => {
   if (!ws) return;
   const fp = e.target.closest('.preview .float-photo'), p = currentPost();
-  if (!fp || tab !== 'posts' || !p || seeThrough(e)) return;
+  if (!fp || tab !== 'posts' || !p || e.target.closest('.slides') || seeThrough(e)) return;
   const d = floatSpec(p, tplFor(p)) || [80, 15, 28, 20];
   drag = { fp, p, r: fp.closest('.canvas').getBoundingClientRect(), x0: e.clientX, y0: e.clientY, fx: p.image.fx ?? d[0], fy: p.image.fy ?? d[1], fw: p.image.fw ?? d[2], fh: p.image.fh ?? d[3], corner: e.target.closest('.fp-handle')?.dataset.h || null, moved: false };
   try { fp.setPointerCapture(e.pointerId); } catch { }
@@ -1350,7 +1495,7 @@ $('#stage').addEventListener('pointerdown', (e) => {
 let pan = null;
 $('#stage').addEventListener('pointerdown', (e) => {
   if (!ws || tab !== 'posts') return;
-  const img = e.target.closest('.preview img[data-image]'), slot = img && img.getAttribute('data-image'), p = currentPost();
+  const img = !e.target.closest('.slides') && e.target.closest('.preview img[data-image]'), slot = img && img.getAttribute('data-image'), p = currentPost();
   if (!slot || !p || img.closest('.float-photo')) return;
   const rec = slotRec(p, slot), fr = img.parentElement;
   if (!rec.src || !img.naturalWidth || !fr.offsetWidth) return;
@@ -1406,7 +1551,7 @@ $('#stage').addEventListener('pointerup', () => {
 });
 
 /* ───────────────────────── wiring ───────────────────────── */
-document.querySelectorAll('nav.tabs button').forEach((b) => b.addEventListener('click', () => { imageTarget = null; tab = b.dataset.tab; try { localStorage.setItem(LS.tab, tab); } catch { } render(); }));
+document.querySelectorAll('nav.tabs button').forEach((b) => b.addEventListener('click', () => { imageTarget = null; imgDelete = false; tab = b.dataset.tab; try { localStorage.setItem(LS.tab, tab); } catch { } render(); }));
 $('#btnOpen').onclick = openFolder;
 
 /* Light / dark: follow the computer by default, or pin one. Remembered in this browser only. */
@@ -1436,7 +1581,7 @@ function openShare() {
     shareMenu.append(h('h4', {}, `Share “${p.fields.title || p.fields.big || p.id}”`),
       h('div', { class: 'state' }, live ? (st === 'published' ? 'Published ✓' : `Scheduled for ${p.date} ${p.time} ✓`) : `Status: ${st}`),
       st === 'idea' || st === 'draft' ? item('Approve', 'Happy with the words and the picture? Only you can approve.', () => { p.status = 'approved'; changed(); render(); toast('Approved. Now export the picture.'); }) : null,
-      item('Export as PNG', 'Saves the picture into the exports folder of your workspace.', () => exportPost(p)),
+      item('Export as PNG', (slideCount(p) > 1 ? `Saves one picture per slide (${slideCount(p)}) into the exports folder of your workspace.` : 'Saves the picture into the exports folder of your workspace.'), () => exportPost(p)),
       item('Copy the caption', p.caption ? 'Copies the caption text, ready to paste.' : 'This post has no caption yet.', () => copyText(p.caption, 'Caption copied.', fb), !p.caption),
       h('div', { class: 'sep' }),
       item(st === 'failed' ? 'Ask your AI to fix it' : 'Ask your AI to schedule it', live ? 'Already sent to PostProxy.' : exported ? 'Copies a message for your AI. It shows you a dry run before anything goes out.' : 'Export the PNG first.',

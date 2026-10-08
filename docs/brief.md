@@ -20,4 +20,4 @@ filesystem (Claude Code, Codex, opencode, Cursor, Goose…).
 - No image generation anywhere. The skill pushes back and explains why.
 
 ## Not in the prototype (noted, not built)
-Carousels/multi-image posts, video, analytics, multi-user/team review, hosting.
+Video, analytics, multi-user/team review, hosting.

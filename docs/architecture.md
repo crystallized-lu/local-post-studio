@@ -88,6 +88,16 @@ For templates with `data-float`, `fx fy fw fh` place the photo (centre, % of the
 
 Formats: `square` 1080×1080 · `portrait` 1080×1350 · `wide` 1350×1080 (5:4) · `story` 1080×1920 · `landscape` 1200×627.
 
+### Carousels (2026-10-08)
+A post is a one-slide post unless it has `slides`. The post's own `template`, `fields`, `image` and `images`
+are slide 1; `post.slides` is an optional array of further slides, each `{ template, fields, image, images }`
+in the same shapes. `format`, `overrides`, `caption`, `date`, `time`, `platforms`, `status` and everything else stay
+on the post and apply to every slide. Maximum 10 slides in total (`MAX_SLIDES`). Export writes `exports/<id>.png`
+for one slide and `exports/<id>-1.png`, `-2.png`… for more (`exportFile()` in `studio.html`, `exportNames()` in
+`scripts/postproxy.mjs`; keep them identical). `exported.visual` includes `slides` only when there are some, so
+posts exported before carousels existed do not read as out of date. In the page, `currentPost()` returns a Proxy
+over the open slide's four keys; use `rawPost(p)` before cloning, comparing or deleting a post.
+
 ### Layout and photo controls
 - `layout.titleWidth` and `layout.bodyWidth` (0.5 to 2, default 1 when missing) become the
   CSS variables `--title-w` and `--body-w`. Templates write text limits as

@@ -352,6 +352,24 @@ For each post that has a photo slot:
 
 The person presses **Share → Export as PNG** (top right) on each approved post. It writes
 `exports/<post-id>.png` into the workspace and sets the status to `exported`.
+A carousel (a post with extra slides, added with **+ Add a slide** above the picture) writes one
+PNG per slide, `exports/<post-id>-1.png`, `-2.png`…, in slide order. All slides share the post's
+format, caption, date and platforms. Instagram takes up to 10 slides; the dry run in Step 8 says so
+and warns about platforms PostProxy does not document multi-image posts for.
+
+**A carousel from ready-made pictures (e.g. Canva stock templates).** When someone has designed the
+slides elsewhere, each page becomes one slide using the `full-picture` template (one full-bleed
+image, no text; add it to `workspace.json` if the workspace lacks it: a single
+`<img data-image>` with `object-fit:cover`). Two ways to get the pages in, offer both:
+- **Canva connector (suggest it if it is not connected):** export the design's pages as PNG, one file
+  per page, and save them into `images/`.
+- **Upload:** they export the pages themselves and drop the PNGs into `images/`.
+Then build one post: slide 1 is the post itself with `template: "full-picture"`, pages 2..N go in
+`slides[]` in page order, each `{template:"full-picture", fields:{}, image:{src, credit}}`. Match the
+post's `format` to the page shape (portrait for 4:5, square for 1:1). Credit each image
+(`"Canva stock template"` or the Canva licence wording they give). Text inside these pictures is not
+editable in the studio; change it in Canva and re-export. Stock templates are for use as designed:
+do not rebuild their artwork as studio templates.
 If an export comes out without its photo, the image host blocked copying: save the image
 into `images/` and pick it again.
 

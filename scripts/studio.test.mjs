@@ -46,3 +46,23 @@ test('starter: same template layouts as the example, no demo content', () => {
   assert.doesNotMatch(JSON.stringify(st), /lehm|clay|mug|remich|kleeschen/i);
   assert.equal(st.posts.length + st.calendar.length + st.fonts.length, 0);
 });
+
+test('carousels: the studio names slide files the way the script does, and old posts keep their export snapshot', async () => {
+  const { exportNames } = await import('./postproxy.mjs');
+  const helpers = page.match(/const rawPost = [^\n]*\n[\s\S]*?const exportFile = [^\n]*/)[0];
+  const fileId = (id) => String(id).replace(/[^a-z0-9_-]/gi, '-').slice(0, 80) || 'post';
+  const { exportFile, slideCount } = new Function('fileId', helpers + '\nreturn { exportFile, slideCount };')(fileId);
+  for (const post of [{ id: 'a b' }, { id: 'a b', slides: [{}] }, { id: 'a b', slides: [{}, {}, {}] }])
+    assert.deepEqual(Array.from({ length: slideCount(post) }, (_, i) => exportFile(post, i)), exportNames(post));
+  // a post without slides must produce exactly the key it produced before carousels, or every old export would read "out of date"
+  const line = page.match(/const visualKey = [^\n]*/)[0].replace(/ \/\/ slides only[^\n]*$/, '');
+  const visualKey = new Function('ws', 'tplFor', line + '\nreturn visualKey;')({ brand: { tokens: { x: 1 } } }, () => ({ html: '<i>' }));
+  const p = { template: 't', format: 'square', fields: { a: 1 }, image: {}, images: {}, overrides: {} };
+  assert.equal(visualKey(p), JSON.stringify(['t', 'square', { a: 1 }, {}, {}, {}, { x: 1 }, '<i>']));
+  assert.notEqual(visualKey({ ...p, slides: [{ template: 't', fields: {} }] }), visualKey(p));
+});
+
+test('carousels: the out-of-date check compares the whole post, not the slide that is open', () => {
+  assert.match(page, /p\.exported\.visual !== visualKey\(rawPost\(p\)\)/);
+  assert.match(page, /function addSlidePicker/); // every "add a slide" control lets you choose the new slide's template
+});

@@ -267,3 +267,64 @@ test("cmdLogin: key is never passed as an argument (tool prompts for it)", () =>
   assert.equal(seen.args.at(-1), "-w");
   assert.equal(seen.opts.stdio, "inherit");
 });
+
+// ---------------------------------------------------------------------------
+// carousels: post.slides
+// ---------------------------------------------------------------------------
+
+import { exportNames, slideCount, CAROUSEL_LIMITS } from "./postproxy.mjs";
+
+const carousel = (n, extra = {}) => ({
+  id: "2027-01-05-trip", date: "2099-01-05", time: "10:00", platforms: ["instagram"], caption: "Hello",
+  status: "exported", template: "t", fields: {}, slides: Array.from({ length: n - 1 }, () => ({ template: "t", fields: {} })), ...extra,
+});
+
+test("exportNames: one file for a single post, numbered files for a carousel, in slide order", () => {
+  assert.equal(slideCount({ id: "a" }), 1);
+  assert.deepEqual(exportNames({ id: "a" }), ["a.png"]);
+  assert.deepEqual(exportNames({ id: "a", slides: [] }), ["a.png"]);
+  assert.deepEqual(exportNames({ id: "a b", slides: [{}, {}] }), ["a-b-1.png", "a-b-2.png", "a-b-3.png"]);
+});
+
+test("buildForm: a carousel sends every picture as repeated media[] in order", () => {
+  const form = buildForm({ id: "p", caption: "c", platforms: ["instagram"] }, "2099-01-05T09:00:00.000Z",
+    [1, 2, 3].map((n) => ({ buffer: Buffer.from("png" + n), filename: `p-${n}.png` })));
+  assert.deepEqual(form.getAll("media[]").map((f) => f.name), ["p-1.png", "p-2.png", "p-3.png"]);
+});
+
+test("validatePost: Instagram carousels stop at the limit; other platforms get a warning, not a block", () => {
+  const ok = validatePost(carousel(CAROUSEL_LIMITS.instagram), "Europe/Luxembourg", new Date("2098-01-01"));
+  assert.equal(ok.ok, true); assert.deepEqual(ok.warnings, []);
+  const tooMany = validatePost(carousel(CAROUSEL_LIMITS.instagram + 1), "Europe/Luxembourg", new Date("2098-01-01"));
+  assert.equal(tooMany.ok, false); assert.match(tooMany.errors.join(), /carousel limit/);
+  const li = validatePost(carousel(3, { platforms: ["linkedin"] }), "Europe/Luxembourg", new Date("2098-01-01"));
+  assert.equal(li.ok, true); assert.match(li.warnings.join(), /linkedin/);
+  assert.deepEqual(validatePost({ ...carousel(1), platforms: ["linkedin"] }, "Europe/Luxembourg", new Date("2098-01-01")).warnings, []);
+});
+
+test("cmdSchedule: a carousel needs every slide's PNG, then sends them all in order", async (t) => {
+  const post = carousel(3);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pps-car-"));
+  fs.writeFileSync(path.join(dir, "workspace.json"), JSON.stringify(mkWorkspace([post])));
+  fs.mkdirSync(path.join(dir, "exports"));
+  fs.writeFileSync(path.join(dir, "exports", "2027-01-05-trip-1.png"), "one");
+  fs.writeFileSync(path.join(dir, "exports", "2027-01-05-trip-2.png"), "two");
+  const logs = []; const log = console.log; console.log = (...a) => logs.push(a.join(" "));
+  try {
+    const r = await cmdSchedule(dir, { send: false });
+    assert.equal(r.dryRun ?? 0, 0, "slide 3 is missing, so nothing is eligible");
+    fs.writeFileSync(path.join(dir, "exports", "2027-01-05-trip-3.png"), "three");
+    const r2 = await cmdSchedule(dir, { send: false });
+    assert.equal(r2.dryRun, 1);
+    assert.match(logs.join("\n"), /slides=3/);
+  } finally { console.log = log; }
+
+  let seen;
+  const realFetch = globalThis.fetch;
+  process.env.POSTPROXY_API_KEY = "test-key";
+  globalThis.fetch = async (url, init) => { seen = init.body; return new Response(JSON.stringify({ id: "pp1", status: "scheduled" }), { status: 200 }); };
+  t.after(() => { globalThis.fetch = realFetch; delete process.env.POSTPROXY_API_KEY; });
+  console.log = () => {};
+  try { await cmdSchedule(dir, { send: true }); } finally { console.log = log; }
+  assert.deepEqual(seen.getAll("media[]").map((f) => f.name), ["2027-01-05-trip-1.png", "2027-01-05-trip-2.png", "2027-01-05-trip-3.png"]);
+});

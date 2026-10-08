@@ -7,6 +7,8 @@ Use it to look at your own work (and to compare with a reference: see compare.py
 in headless Chromium, hands it an in-memory copy of the workspace folder, picks the post and runs the
 studio's own export, so what you see is what the person will get.
 
+A carousel post exports every slide; --slide N picks which one this writes (default 1).
+
 Needs: pip install playwright   (and a Chromium that Playwright can find; in the cloud workspace one is preinstalled)
 --needs  just prints the files the post depends on (workspace.json, fonts, images) and exits. Use it to stage
          them when the workspace folder lives on the person's computer and this script runs elsewhere.
@@ -18,6 +20,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument('workspace'); ap.add_argument('post_id'); ap.add_argument('out')
 ap.add_argument('--studio', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'studio.html'))
 ap.add_argument('--needs', action='store_true')
+ap.add_argument('--slide', type=int, default=1, help='for a carousel: which slide to write out (1 = the first)')
 ap.add_argument('--width', type=int, default=1500)
 a = ap.parse_args()
 
@@ -79,7 +82,7 @@ with sync_playwright() as p:
     if not ok:
         print('No post with id', a.post_id, '. Posts:', pg.evaluate("ws.posts.map((p) => p.id)"), file=sys.stderr); sys.exit(2)
     pg.wait_for_timeout(500)
-    name = pg.evaluate("(id) => fileId(id) + '.png'", a.post_id)
+    name = pg.evaluate("([id, i]) => exportFile(ws.posts.find((x) => x.id === id), i)", [a.post_id, a.slide - 1])
     pg.evaluate("exportPost(currentPost())")
     png = None
     for _ in range(40):

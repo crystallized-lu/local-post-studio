@@ -35,6 +35,22 @@ const API_BASE = "https://api.postproxy.dev/api";
 /** Export filename for a post id. Must match fileId() in studio.html; also keeps ids from escaping exports/. */
 export const exportName = (id) => (String(id).replace(/[^a-z0-9_-]/gi, "-").slice(0, 80) || "post") + ".png";
 
+/** Number of pictures a post sends: the post itself plus post.slides (a carousel). */
+export const slideCount = (post) => 1 + (Array.isArray(post && post.slides) ? post.slides.length : 0);
+
+/** Export files for a post, in slide order: <id>.png for one slide, <id>-1.png, <id>-2.png… for a carousel. Must match exportFile() in studio.html. */
+export function exportNames(post) {
+  const n = slideCount(post);
+  if (n === 1) return [exportName(post.id)];
+  const base = exportName(post.id).replace(/\.png$/, "");
+  return Array.from({ length: n }, (_, i) => `${base}-${i + 1}.png`);
+}
+
+/** Most pictures one post may carry, per platform. Instagram: PostProxy's Instagram page says carousels take up to 10 images. */
+export const CAROUSEL_LIMITS = { instagram: 10 };
+/** Platforms where PostProxy's docs do not confirm multi-image posts (checked 2026-10-08): the dry run warns instead of blocking. */
+export const CAROUSEL_UNVERIFIED = ["linkedin", "facebook", "threads", "bluesky", "x", "twitter", "tiktok"];
+
 export const PLATFORM_LIMITS = {
   instagram: 2200,
   linkedin: 3000,
@@ -137,7 +153,17 @@ export function validatePost(post, timezone = DEFAULT_TIMEZONE, now = new Date()
     }
   }
 
-  return { ok: errors.length === 0, errors, utcIso, caption };
+  const slides = slideCount(post);
+  const warnings = [];
+  if (slides > 1) {
+    for (const platform of platforms) {
+      const max = CAROUSEL_LIMITS[platform];
+      if (max !== undefined && slides > max) errors.push(`${slides} slides exceeds the ${platform} carousel limit (${max})`);
+      if (CAROUSEL_UNVERIFIED.includes(platform)) warnings.push(`${platform}: multi-image posts are not confirmed in PostProxy's docs; the platform may take only some slides or refuse`);
+    }
+  }
+
+  return { ok: errors.length === 0, errors, warnings, utcIso, caption };
 }
 
 /**
@@ -162,10 +188,9 @@ export function buildForm(post, utcIso, imageBuffer, imageFilename) {
   for (const platform of post.platforms || []) {
     form.append("profiles[]", platform);
   }
-  if (imageBuffer) {
-    const blob = new Blob([imageBuffer], { type: "image/png" });
-    form.append("media[]", blob, imageFilename || `${post.id}.png`);
-  }
+  // One picture, or a carousel: an array of { buffer, filename } in slide order (media[] repeats, order is kept).
+  const files = Array.isArray(imageBuffer) ? imageBuffer : imageBuffer ? [{ buffer: imageBuffer, filename: imageFilename || `${post.id}.png` }] : [];
+  for (const f of files) form.append("media[]", new Blob([f.buffer], { type: "image/png" }), f.filename);
   return form;
 }
 
@@ -266,7 +291,9 @@ export async function cmdProfiles() {
 export async function cmdSchedule(workspaceDir, { send = false, only = null } = {}) {
   const { wsPath, ws } = readWorkspace(workspaceDir);
   const timezone = ws.timezone || DEFAULT_TIMEZONE;
-  const hasExport = (id) => fs.existsSync(path.join(workspaceDir, "exports", exportName(id)));
+  const byId = new Map((ws.posts || []).map((p) => [p.id, p]));
+  // every slide's picture must exist, not just the first
+  const hasExport = (id) => exportNames(byId.get(id)).every((f) => fs.existsSync(path.join(workspaceDir, "exports", f)));
 
   let candidates = selectPosts(ws.posts || [], hasExport);
   if (only) candidates = candidates.filter((p) => p.id === only);
@@ -279,11 +306,14 @@ export async function cmdSchedule(workspaceDir, { send = false, only = null } = 
   for (const { post, v } of invalid) {
     console.log(`SKIP  ${post.id}  ${v.errors.join("; ")}`);
   }
+  for (const { post, v } of valid) {
+    for (const w of v.warnings) console.log(`WARN  ${post.id}  ${w}`);
+  }
 
   if (!send) {
     for (const { post, v } of valid) {
       console.log(
-        `DRY-RUN  ${post.id}  platforms=${(post.platforms || []).join(",")}  at=${v.utcIso}  (use --send to submit)`
+        `DRY-RUN  ${post.id}  platforms=${(post.platforms || []).join(",")}  at=${v.utcIso}${slideCount(post) > 1 ? `  slides=${slideCount(post)}` : ""}  (use --send to submit)`
       );
     }
     return { sent: 0, skipped: invalid.length, dryRun: valid.length };
@@ -292,9 +322,8 @@ export async function cmdSchedule(workspaceDir, { send = false, only = null } = 
   const key = requireKey();
   let sentCount = 0;
   for (const { post, v } of valid) {
-    const imgPath = path.join(workspaceDir, "exports", exportName(post.id));
-    const imageBuffer = fs.readFileSync(imgPath);
-    const form = buildForm(post, v.utcIso, imageBuffer, exportName(post.id));
+    const files = exportNames(post).map((filename) => ({ filename, buffer: fs.readFileSync(path.join(workspaceDir, "exports", filename)) }));
+    const form = buildForm(post, v.utcIso, files);
     let res;
     try {
       res = await fetch(`${API_BASE}/posts`, {

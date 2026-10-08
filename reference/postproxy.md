@@ -59,6 +59,11 @@ Never run `--send` without that explicit yes in the current conversation.
 Limits to check in the dry run (PostProxy platform pages):
 - Instagram: images JPG/PNG, ≤ 8 MB, min 200×200; caption ≤ 2,200 chars; ~100
   API posts per 24h. Stories take no caption.
+- Carousels (`post.slides`): `schedule` sends every slide's PNG as repeated `media[]`, in order, and only
+  when all `<id>-N.png` files exist. Instagram: up to 10 images (PostProxy's Instagram page, checked
+  2026-10-08). That page also says "Images must be JPEG"; if a PNG carousel is refused with a format
+  error, export is still PNG: convert the slides to JPG before sending. Other platforms: PostProxy's docs
+  do not confirm multi-image posts, so the dry run prints a WARN and still sends.
 - LinkedIn: images JPG/PNG/GIF, ≤ 8 MB, min 552×276; text ≤ 3,000 chars.
 - Scheduled posts can be edited until 5 minutes before publish time.
 
