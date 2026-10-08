@@ -8,3 +8,5 @@ exports/
 workspaces/
 workspaces.json
 docs/decision-log.md
+.claude/
+.remember/

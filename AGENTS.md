@@ -23,7 +23,7 @@ you can install this folder as a skill instead; the instructions are the same.
 ## If you are changing the skill itself
 
 - Contract for `workspace.json`: `docs/architecture.md`. Decisions: `docs/decision-log.md`
-  (add an entry for every change).
+  (kept locally, not committed; add an entry for every change).
 - `npm test` after changing `scripts/`, `studio.html`, `starter/` or `example/`.
 - `studio.html` must load nothing remote (a test enforces it); fonts are local files.
 - After changing `studio.html`, run `node scripts/sync.mjs` to update registered workspaces.
