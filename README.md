@@ -55,7 +55,11 @@ pick the workspace. From then on:
 - what you change in the page saves to `workspace.json` immediately;
 - what the AI changes shows up in the page within a couple of seconds;
 - fonts you drop into `fonts/` are picked up automatically;
-- next time, one click on **Reopen**.
+- next time, one click on **Reopen**;
+- the **Post Studio** logo links here. Tick the box on the welcome screen and an orange
+  dot on the logo tells you when this repo has a newer version (`git pull`, then
+  `node scripts/sync.mjs`). Off by default: when on, the page makes one request a day
+  to GitHub for the latest commit date and sends nothing about you, your folder or your posts.
 
 Safari and Firefox can't save into folders yet, so the page asks for one of the browsers
 above.

@@ -69,3 +69,13 @@ test("stampPage replaces an old stamp and rejects non-uuid ids", () => {
   assert.equal((b.match(/workspace-id/g) || []).length, 1);
   assert.throws(() => stampPage("<head>", '"><script>'));
 });
+
+test("stampPage sets the version the update dot compares against; the central page keeps the archive placeholder", () => {
+  const central = fs.readFileSync(new URL("../studio.html", import.meta.url), "utf8");
+  assert.match(central, /<meta name="studio-version" content="\$Format:%cI\$">/, "central page must carry the git-archive placeholder");
+  assert.match(fs.readFileSync(new URL("../.gitattributes", import.meta.url), "utf8"), /^studio\.html export-subst/m);
+  const page = stampPage(central, "11111111-1111-4111-8111-111111111111", "2026-10-09T13:01:33+02:00");
+  assert.match(page, /<meta name="studio-version" content="2026-10-09T13:01:33\+02:00">/);
+  assert.doesNotMatch(page, /\$Format/);
+  assert.match(stampPage(central, "11111111-1111-4111-8111-111111111111", null), /\$Format:%cI\$/, "no git: the placeholder stays, and the page skips the check");
+});

@@ -41,6 +41,13 @@ follows: the AI must have file access; the browser must be Chromium-based.
   read from a variable (`--display-size`, `--body-size`, `--k`, `--pad`, `--title-w`,
   `--body-w`); `scripts/lint_templates.mjs` fails a template that hard-codes one, and the
   Text controls say so when the open post's design does.
+- **Update dot.** `<meta name="studio-version">` holds the date of the commit the page came
+  from: `$Format:%cI$` is filled by git archive on a ZIP download (`.gitattributes`
+  `export-subst`), and `sync.mjs` writes `git log -1` into each workspace copy. Once a day
+  the page asks `api.github.com` for the latest commit date and lights a dot on the logo
+  (which links to the repo) when it is newer. Opt-in (checkbox on the welcome screen,
+  `localStorage` `lps.updateCheck`), off by default; the request carries nothing about the
+  person, and an unstamped page makes none.
 - **Local fonts only.** `workspace.fonts` lists files in `fonts/`; the page turns them
   into `@font-face` rules on blob URLs (a same-page `<style>`, so html-to-image embeds
   them in exports). File names are parsed to guess family/weight/style.

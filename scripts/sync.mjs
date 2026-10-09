@@ -12,6 +12,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { pathToFileURL, fileURLToPath } from "node:url";
 
 const SKILL_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."); // decodes spaces in paths
@@ -29,11 +30,20 @@ function readRegistry(skillDir) {
 }
 const writeRegistry = (skillDir, reg) => writeAtomic(registryFile(skillDir), JSON.stringify(reg, null, 2) + "\n");
 
-/** The central page with this workspace's id stamped in. */
-export function stampPage(page, id) {
+/** The central page with this workspace's id stamped in, and its version set to `version` when given. */
+export function stampPage(page, id, version) {
   if (!ID_RE.test(id)) throw new Error(`bad workspace id: ${id}`);
   const clean = page.replace(/<meta name="workspace-id"[^>]*>\n?/, "");
-  return clean.replace("<head>", `<head>\n<meta name="workspace-id" content="${id}">`);
+  const stamped = clean.replace("<head>", `<head>\n<meta name="workspace-id" content="${id}">`);
+  return version ? stamped.replace(/(<meta name="studio-version" content=")[^"]*(")/, `$1${version}$2`) : stamped;
+}
+
+/** Date of the skill's last commit (the page's version), or null without git. A ZIP download is stamped by git archive instead. */
+export function skillVersion(skillDir = SKILL_DIR) {
+  try {
+    const d = execFileSync("git", ["-C", skillDir, "log", "-1", "--format=%cI"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    return /^\d{4}-/.test(d) ? d : null;
+  } catch { return null; }
 }
 
 /** Copy the central studio into one workspace. Returns a short state word. */
@@ -44,7 +54,7 @@ export function syncOne(entry, { skillDir = SKILL_DIR } = {}) {
   try { ws = readJson(wsFile); } catch { return "unreadable"; }
   if (ws.workspaceId !== entry.id) return "mismatch";
   entry.name = ws.brand?.name || path.basename(entry.path);
-  const page = stampPage(fs.readFileSync(path.join(skillDir, "studio.html"), "utf8"), entry.id);
+  const page = stampPage(fs.readFileSync(path.join(skillDir, "studio.html"), "utf8"), entry.id, skillVersion(skillDir));
   const target = path.join(entry.path, "studio.html");
   const current = fs.existsSync(target) ? fs.readFileSync(target, "utf8") : null;
   entry.lastSynced = new Date().toISOString();
