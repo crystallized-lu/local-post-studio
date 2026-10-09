@@ -287,8 +287,8 @@ don't skip a step. Never say a layout matches unless you ran step 5.
    record its position and size as % of the page (left, top, width, height), its shape
    (corner radii), its stacking order, how many repeats there are, which text is big or small
    and where, which colour does which job, and what runs off the edge. Name the target
-   format and any aspect-ratio difference from the reference. `sources/collage-spec.md` in
-   their workspace is a worked example.
+   format and any aspect-ratio difference from the reference. If the workspace already has a
+   `sources/*-spec.md` from an earlier post, use it as the model.
 2. **Keep the hero.** If the reference shows the product, show *their* product: use their
    own photo (shop images, product mockups, transparent cut-outs). If none exists, say so
    and ask; never swap in a flat illustration and call it the same layout.

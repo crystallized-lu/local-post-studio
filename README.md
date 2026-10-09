@@ -98,5 +98,6 @@ Windows set `POSTPROXY_API_KEY` for the session instead. Only posts you've appro
 ## Licence
 
 MIT (see `LICENSE`). `studio.html` inlines [html-to-image](https://github.com/bubkoo/html-to-image)
-(MIT). The fonts in `example/fonts/` are under the SIL Open Font License (`OFL-*.txt`
+(MIT) and embeds Libre Baskerville and Lato for its own interface (SIL Open Font License).
+The fonts in `example/fonts/` are under the SIL Open Font License (`OFL-*.txt`
 next to them). The example photos are CC0 from the WordPress Photo Directory.
