@@ -184,6 +184,11 @@ Two more rules make the person's sliders work, so follow them in every template:
   `image.y` (0 to 100) and `image.zoom` (1 to 3) on top, so the photo's frame must clip
   (`overflow:hidden`) for zoom to stay inside it.
 
+**Check every template you write or change:** `node scripts/lint_templates.mjs <workspace-folder>`.
+It names each hard-coded size, spacing, width or `object-position` that would leave a slider
+dead. Do not call a template done, and do not tell the person it is ready, until it prints
+"all templates follow the brand sliders". Paste that line in your report.
+
 Gate: they look at the brand board (Brand tab). Ask what feels off. They can move
 sliders or tell you in words. Translate words into token changes and say what you
 changed in one line:
@@ -290,7 +295,13 @@ don't skip a step. Never say a layout matches unless you ran step 5.
 3. **Replace, don't copy:** their brand, colours, fonts, artwork and real facts. Never reuse
    the reference's brand names, logos, photos, store badges or artwork. Spec-style text uses
    only facts from their own material.
-4. **Build to the spec's numbers,** not to your impression of the picture.
+4. **Build to the spec's numbers,** not to your impression of the picture. Positions and
+   boxes go in as % of the page; sizes never go in as pixels. Convert every text size the
+   spec gives, or that you read off a diagram, into a multiple of the brand defaults
+   (`type.displaySize`, `type.bodySize`): at the defaults of 76 and 32, a 40 px title is
+   `font-size:calc(var(--display-size) * .53)` and a 22 px note is `calc(var(--body-size) * .69)`.
+   Padding and gaps are `calc(var(--k) * Npx)`. The picture matches the spec at the defaults
+   and the person's text-size sliders still work on it. Run the lint from Step 2 before step 5.
 5. **Render and compare, at most three rounds.**
    `python3 scripts/render_post.py <workspace-folder> <post-id> out.png` renders the post as
    Export PNG would; `python3 scripts/compare.py reference.png out.png side.png --ghost ghost.png`

@@ -778,6 +778,10 @@ function tokenControls(read, write, isOver) {
   const wrap = h('div');
   for (const [title, items] of CONTROLS) {
     const g = h('div', { class: 'group' }, h('h3', {}, title));
+    if (title === 'Text' && isOver) { // a design that hard-codes its sizes makes these sliders dead: say so instead of looking broken
+      const t = ws && tplFor(ws.posts.find((p) => p.id === currentId) || {});
+      if (t && !/var\(--(display|body)-size\)/.test(t.html || '')) g.append(h('div', { class: 'hint' }, 'This design sets its own text sizes, so these sliders do nothing here. Ask your AI to make it follow the brand sizes (scripts/lint_templates.mjs shows what to change).'));
+    }
     const more = h('details', { class: 'more', open: !!(isOver && items.some((c) => c.adv && isOver(c.k))) }, h('summary', {}, 'More options'));
     for (const c of items) {
       const v = read(c.k) ?? c.d;

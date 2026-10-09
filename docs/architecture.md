@@ -37,7 +37,10 @@ follows: the AI must have file access; the browser must be Chromium-based.
 - **PostProxy accepts multipart uploads** (`media[]`): local PNGs go up directly.
 - **Templates are data.** Inline-style HTML using CSS variables; fields bind via
   `data-field`, lists via `data-list`, images via `data-image`. The page sanitises
-  template HTML and fills text with `textContent` only.
+  template HTML and fills text with `textContent` only. Every size a slider controls is
+  read from a variable (`--display-size`, `--body-size`, `--k`, `--pad`, `--title-w`,
+  `--body-w`); `scripts/lint_templates.mjs` fails a template that hard-codes one, and the
+  Text controls say so when the open post's design does.
 - **Local fonts only.** `workspace.fonts` lists files in `fonts/`; the page turns them
   into `@font-face` rules on blob URLs (a same-page `<style>`, so html-to-image embeds
   them in exports). File names are parsed to guess family/weight/style.
