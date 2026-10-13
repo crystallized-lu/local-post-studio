@@ -11,3 +11,4 @@ docs/decision-log.md
 .claude/
 .remember/
 __pycache__/
+*.zip
