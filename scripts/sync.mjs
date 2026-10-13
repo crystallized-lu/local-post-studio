@@ -46,6 +46,34 @@ export function skillVersion(skillDir = SKILL_DIR) {
   } catch { return null; }
 }
 
+/* Double-click launchers next to studio.html: the same browser list as SKILL.md Step 0, relative to their own folder.
+   ponytail: a .command (opens a Terminal window for a moment) and a .cmd; a real .app with a Dock icon can come later via osacompile. */
+const LAUNCHERS = {
+  "Open Post Studio.command": `#!/bin/sh
+# Opens this workspace's studio in a browser that can save into folders. Double-click me.
+cd "$(dirname "$0")" || exit 1
+for app in "Google Chrome" "Microsoft Edge" "Brave Browser" "Arc"; do
+  open -a "$app" studio.html 2>/dev/null && exit 0
+done
+open studio.html
+`,
+  "Open Post Studio.cmd": `@echo off
+rem Opens this workspace's studio in a browser that can save into folders. Double-click me.
+for %%b in (chrome msedge brave) do (
+  start "" %%b "%~dp0studio.html" 2>nul && exit /b 0
+)
+start "" "%~dp0studio.html"
+`,
+};
+function writeLaunchers(dir) {
+  for (const [name, text] of Object.entries(LAUNCHERS)) {
+    const file = path.join(dir, name);
+    if (fs.existsSync(file) && fs.readFileSync(file, "utf8") === text) continue;
+    writeAtomic(file, text);
+    if (name.endsWith(".command")) fs.chmodSync(file, 0o755);
+  }
+}
+
 /** Copy the central studio into one workspace. Returns a short state word. */
 export function syncOne(entry, { skillDir = SKILL_DIR } = {}) {
   const wsFile = path.join(entry.path, "workspace.json");
@@ -57,9 +85,12 @@ export function syncOne(entry, { skillDir = SKILL_DIR } = {}) {
   const page = stampPage(fs.readFileSync(path.join(skillDir, "studio.html"), "utf8"), entry.id, skillVersion(skillDir));
   const target = path.join(entry.path, "studio.html");
   const current = fs.existsSync(target) ? fs.readFileSync(target, "utf8") : null;
+  try {
+    writeLaunchers(entry.path);
+    if (current === page) return "current";
+    writeAtomic(target, page);
+  } catch (e) { return "unwritable"; } // one locked folder must not stop the others
   entry.lastSynced = new Date().toISOString();
-  if (current === page) return "current";
-  writeAtomic(target, page);
   return "updated";
 }
 
@@ -102,6 +133,7 @@ const HELP = {
   missing: "not found there. If it moved: node scripts/sync.mjs register <new folder>",
   mismatch: "that folder now holds a different workspace. Register the right folder.",
   unreadable: "workspace.json isn't valid JSON right now. Fix it, then sync again.",
+  unwritable: "could not write there (permissions or a sandbox). Run the sync again outside it.",
 };
 
 function main() {

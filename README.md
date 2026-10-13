@@ -30,7 +30,7 @@ newsletters, photo folders) and where to keep your workspace. Then follow along.
 | `scripts/compare.py` | Puts a reference and a render side by side under one grid, with an optional 50 percent overlay. |
 | `scripts/trace_frames.py` | Finds the frames of a collage reference (photos divided by thin outlines) and writes their shapes as polygons. |
 | `scripts/frames_to_template.py` | Turns traced frames into a studio template with clipped photo slots and drawn dividing lines. |
-| `scripts/sync.mjs` | Keeps every workspace's copy of the studio up to date: `register <folder>` when one is created or moved, no arguments to sync them all. Your list of workspaces lives in `workspaces.json` (private, never shared). |
+| `scripts/sync.mjs` | Keeps every workspace's copy of the studio up to date: `register <folder>` when one is created or moved, no arguments to sync them all. Also writes the **Open Post Studio** launchers (`.command` for Mac, `.cmd` for Windows) into each workspace. Your list of workspaces lives in `workspaces.json` (private, never shared). |
 | `scripts/postproxy.mjs` | Stores your PostProxy key in your keychain, sends approved posts (dry run unless you add `--send`), checks their status. |
 | `reference/` | Design rules, where images can come from, why no AI images, PostProxy setup. |
 | `example/` | A complete made-up workspace (ceramics studio) with its own photos and fonts. |
@@ -50,8 +50,9 @@ It doesn't matter which one:
 Give it this folder and say "help me set up my social posts". It creates your workspace
 folder, registers it, and puts that workspace's own copy of `studio.html` in it.
 
-Open that `studio.html` in Chrome, Edge, Brave or Arc and press **Open a folder…**, then
-pick the workspace. From then on:
+Double-click **Open Post Studio** in that folder (it opens `studio.html` in Chrome, Edge,
+Brave or Arc, whichever you have) and press **Open a folder…**, then pick the workspace.
+From then on:
 - what you change in the page saves to `workspace.json` immediately;
 - what the AI changes shows up in the page within a couple of seconds;
 - fonts you drop into `fonts/` are picked up automatically;

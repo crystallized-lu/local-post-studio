@@ -79,3 +79,31 @@ test("stampPage sets the version the update dot compares against; the central pa
   assert.doesNotMatch(page, /\$Format/);
   assert.match(stampPage(central, "11111111-1111-4111-8111-111111111111", null), /\$Format:%cI\$/, "no git: the placeholder stays, and the page skips the check");
 });
+
+test("sync writes double-click launchers next to the studio, for Mac and Windows", () => {
+  const { skillDir, ws } = setup();
+  register(ws, { skillDir });
+  const mac = fs.readFileSync(path.join(ws, "Open Post Studio.command"), "utf8");
+  const win = fs.readFileSync(path.join(ws, "Open Post Studio.cmd"), "utf8");
+  assert.match(mac, /^#!\/bin\/(ba)?sh/);
+  for (const b of ["Google Chrome", "Microsoft Edge", "Brave Browser", "Arc"]) assert.ok(mac.includes(b), b);
+  assert.ok(fs.statSync(path.join(ws, "Open Post Studio.command")).mode & 0o100, "executable");
+  for (const b of ["chrome", "msedge", "brave"]) assert.ok(win.includes(b), b);
+  assert.ok(win.includes("%~dp0studio.html"));
+  assert.ok(!mac.includes(ws), "launcher is relative, so a moved folder still works");
+});
+
+test("a workspace that cannot be written is reported and does not stop the others", () => {
+  const { skillDir, ws, root } = setup();
+  register(ws, { skillDir });
+  const ws2 = path.join(root, "Second");
+  fs.mkdirSync(ws2);
+  fs.writeFileSync(path.join(ws2, "workspace.json"), JSON.stringify({ version: 1, brand: { name: "Second" } }) + "\n");
+  register(ws2, { skillDir });
+  fs.writeFileSync(path.join(skillDir, "studio.html"), "<!doctype html>\n<html>\n<head>\n<title>v3</title>\n</head></html>");
+  fs.chmodSync(ws, 0o500);
+  try {
+    const states = syncAll({ skillDir }).map((r) => r.state);
+    assert.deepEqual(states, ["unwritable", "updated"]);
+  } finally { fs.chmodSync(ws, 0o700); }
+});

@@ -72,19 +72,17 @@ that's expected. Then run `node scripts/sync.mjs register <folder>`: it gives th
 workspace its permanent id, adds it to the list and puts its own `studio.html` in it.
 
 Then open the studio for them; don't make them hunt for the file. In order:
-1. **If you can run commands on their computer, open it yourself** in a browser that
-   can save to folders, trying each until one works:
-   - macOS: `open -a "Google Chrome" <path>/studio.html` (then "Microsoft Edge", "Brave Browser", "Arc")
-   - Windows: `start chrome "<path>\studio.html"` (then `msedge`, `brave`)
-   - Linux: `google-chrome <path>/studio.html` (then `microsoft-edge`, `brave-browser`, `chromium`)
-   If none of those is installed, open it in their default browser (`open <path>`,
-   `start "" <path>`, `xdg-open <path>`); if that's Safari or Firefox the page says so
-   and offers a button to copy its link for another browser.
+1. **If you can run commands on their computer, open it yourself:** on macOS
+   `"<path>/Open Post Studio.command"`, on Windows `"<path>\Open Post Studio.cmd"`
+   (`sync.mjs` put both next to `studio.html`; they try Chrome, Edge, Brave and Arc,
+   then the default browser). On Linux: `google-chrome <path>/studio.html` (then
+   `microsoft-edge`, `brave-browser`, `chromium`, `xdg-open`).
    Say "I've opened the studio in Chrome" so they know where to look.
-2. **Otherwise give a clickable link** on its own line, `file:///full/path/studio.html`,
-   plus the plain path as a fallback, and name the browser to use. Some apps open links
-   in the default browser: if that's Safari or Firefox, they should copy the link into
-   Chrome, Edge, Brave or Arc instead.
+2. **Otherwise tell them to double-click "Open Post Studio" in their workspace folder.**
+   That is their icon for the studio from now on; say so once. As a fallback give a
+   clickable link on its own line, `file:///full/path/studio.html`, and name the
+   browser to use: if the link opens in Safari or Firefox, the page says so and offers
+   a button to copy its link into Chrome, Edge, Brave or Arc.
 
 The first time, in the studio they press **Open a folder…** and pick the same folder
 (each workspace's studio only accepts its own folder). Safari and
@@ -240,9 +238,12 @@ they've said, a photo of their own. Status `draft`. Run the review checklist in
 
 Gate: they flip through them in the Posts tab. Ask for one change per post at most;
 recurring feedback goes back into tokens or templates, not per-post overrides. What is
-specific to one post is theirs to adjust there: **Photo → Left / right, Up / down, Zoom**
-frames the photo; **Brand → Layout → Headline width / Text width** (or "Tweak this post
-only") sets how much of the post the words take up. Tell them where these are.
+specific to one post is theirs to adjust there: dragging the photo on the picture (or
+**Photo → Show more left / right, up / down, Zoom**) frames the photo; **Brand → Layout →
+Headline width / Text width** (or the post's **Style** section) sets how much of the post
+the words take up. Tell them where these are. Less-used controls (panel and secondary
+colours, accent font, letter spacing, grain, logo size…) sit under **More options** in
+each group; mention that when they ask for one of those.
 
 ### When they paste a "download a whole page of images" prompt
 
@@ -420,6 +421,7 @@ to retire, then plan the next month from Step 5.
 ```
 SKILL.md                 this pipeline
 studio.html              the control page (copied into each workspace; opens from disk)
+Open Post Studio.command / .cmd   double-click launchers, written next to each workspace's studio.html by sync.mjs
 scripts/postproxy.mjs    login | profiles | schedule | status  (Node ≥18, no dependencies)
 scripts/sync.mjs         register | forget | (no args) sync every workspace's studio.html
 workspaces.json          the person's workspaces (created by sync.mjs; personal, never shared)
