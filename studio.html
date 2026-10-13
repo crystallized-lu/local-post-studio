@@ -268,14 +268,13 @@ body.nows .layout { grid-template-columns: 1fr; }
 /* ───────────────────────── constants ───────────────────────── */
 const FORMATS = { square: [1080, 1080], portrait: [1080, 1350], wide: [1350, 1080], story: [1080, 1920], landscape: [1200, 627] };
 const LIMITS = { instagram: 2200, facebook: 63206, linkedin: 3000, threads: 500, bluesky: 300, x: 280 };
-const STATUSES = ['idea', 'draft', 'approved', 'exported', 'scheduled', 'published', 'failed'];
 const IMG_EXT = /\.(jpe?g|png|webp|gif|avif)$/i;
 const LS = { pexels: 'lps.pexelsKey', tab: 'lps.tab', sort: 'lps.sort', theme: 'lps.theme', updates: 'lps.updateCheck' };
 const FONT_EXT = /\.(woff2?|ttf|otf)$/i;
 
 const CONTROLS = [
-  ['Colours', [['colors.bg', 'Background'], ['colors.surface', 'Panels and soft shapes'], ['colors.text', 'Text'], ['colors.muted', 'Secondary text'], ['colors.accent', 'Highlight colour'], ['colors.accent2', 'Second highlight']].map(([k, l]) => ({ k, l, type: 'color' }))],
-  ['Fonts', [{ k: 'fonts.display', l: 'Headlines', type: 'font' }, { k: 'fonts.body', l: 'Body', type: 'font' }, { k: 'fonts.accent', l: 'Accent font', type: 'font' }]],
+  ['Colours', [['colors.bg', 'Background'], ['colors.text', 'Text'], ['colors.accent', 'Highlight colour'], ['colors.accent2', 'Second highlight'], ['colors.surface', 'Panels and soft shapes', 1], ['colors.muted', 'Secondary text', 1]].map(([k, l, adv]) => ({ k, l, adv, type: 'color' }))],
+  ['Fonts', [{ k: 'fonts.display', l: 'Headlines', type: 'font' }, { k: 'fonts.body', l: 'Body', type: 'font' }, { k: 'fonts.accent', adv: 1, l: 'Accent font', type: 'font' }]],
   ['Text', [
     { k: 'type.displaySize', l: 'Headline size', min: 40, max: 180, step: 1, u: 'px' },
     { k: 'type.bodySize', l: 'Text size', min: 18, max: 56, step: 1, u: 'px' },
@@ -299,7 +298,7 @@ const CONTROLS = [
   ['Logo', [
     { k: 'logo.text', adv: 1, l: 'Wordmark', type: 'text' },
     { k: 'logo.src', adv: 1, l: 'Logo file', type: 'text', ph: 'images/logo.png' },
-    { k: 'logo.size', l: 'Logo size', min: 0.4, max: 2.5, step: 0.05 },
+    { k: 'logo.size', adv: 1, l: 'Logo size', min: 0.4, max: 2.5, step: 0.05 },
     { k: 'logo.position', l: 'Logo position', type: 'select', options: ['auto', 'top-left', 'top-right', 'bottom-left', 'bottom-right', 'none'] }]],
 ];
 
@@ -784,7 +783,7 @@ function showWelcome(note) {
 function tokenControls(read, write, isOver) {
   const wrap = h('div');
   for (const [title, items] of CONTROLS) {
-    const g = h('div', { class: 'group' }, h('h3', {}, title));
+    const g = isOver ? h('details', { class: 'group', open: items.some((c) => isOver(c.k)) }, h('summary', {}, h('h3', { style: 'display:inline' }, title))) : h('div', { class: 'group' }, h('h3', {}, title)); // per post: folded unless this post changes something in it
     if (title === 'Text' && isOver) { // a design that hard-codes its sizes makes these sliders dead: say so instead of looking broken
       const t = ws && tplFor(ws.posts.find((p) => p.id === currentId) || {});
       if (t && !/var\(--(display|body)-size\)/.test(t.html || '')) g.append(h('div', { class: 'hint' }, 'This design sets its own text sizes, so these sliders do nothing here. Ask your AI to make it follow the brand sizes (scripts/lint_templates.mjs shows what to change).'));
@@ -840,8 +839,19 @@ function brandPanel() {
       h('label', { class: 'field' }, h('span', {}, 'Name'), h('input', { type: 'text', value: b.name || '', onchange: (e) => { b.name = e.target.value; changed(); } })),
       h('label', { class: 'field' }, h('span', {}, 'Handle'), h('input', { type: 'text', value: b.handle || '', onchange: (e) => { b.handle = e.target.value; changed(); } }))),
     fontHelp(),
+    logoHelp(),
     tokenControls((k) => get(b.tokens, k), (k, v) => { set(b.tokens, k, v); changed(); }),
   );
+}
+function logoHelp() { // copies the chosen file into images/ and points logo.src at it, so nobody has to type a path
+  const pick = h('input', { type: 'file', accept: '.png,.svg,.webp,.jpg,.jpeg', hidden: true, onchange: async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    if (!dir) { toast('Open your workspace folder first.'); return; }
+    ws.brand.tokens.logo ||= {}; ws.brand.tokens.logo.src = await importBlob(f, 'logo-' + f.name); changed(); render(); toast('Logo set. Size and position are under Logo.');
+  } });
+  const src = ws.brand.tokens.logo?.src;
+  return h('div', { class: 'group' }, h('h3', {}, 'Logo file'),
+    h('div', { class: 'inline' }, h('button', { onclick: () => pick.click() }, src ? 'Replace logo file…' : 'Add logo file…'), pick, h('span', { style: 'color:var(--ui-muted)' }, src || 'No logo file yet: the wordmark is used')));
 }
 function fontHelp() {
   const pickFiles = h('input', { type: 'file', multiple: true, accept: '.woff2,.woff,.ttf,.otf', hidden: true, onchange: (e) => addFontFiles([...e.target.files]) });
@@ -1071,15 +1081,19 @@ function postEditor(p) {
         h('button', { onclick: () => { imageTarget = sl; tab = 'images'; render(); } }, 'Choose from Images…'),
         imagePosition(p, tpl, sl)))) :
     tpl.html.includes('data-image') && sec('Photo',
-      h('label', { class: 'field' }, h('span', {}, 'Image path or URL'), h('input', { type: 'text', value: p.image.src?.startsWith('data:') ? '(embedded image)' : p.image.src || '', onchange: upd((e) => { p.image.src = e.target.value; }) })),
-      h('label', { class: 'field' }, h('span', {}, 'Credit'), h('input', { type: 'text', value: p.image.credit || '', onchange: upd((e) => { p.image.credit = e.target.value; }) })),
+      h('button', { class: 'primary', onclick: () => { tab = 'images'; render(); } }, 'Choose from Images…'),
+      h('div', { class: 'hint' }, 'Drag the photo on the picture to show a different part of it, or use the sliders. Zoom makes it bigger inside the frame.'),
       imagePosition(p, tpl),
-      h('button', { onclick: () => { tab = 'images'; render(); } }, 'Choose from Images…')),
+      h('details', { class: 'more' }, h('summary', {}, 'More options'),
+        h('label', { class: 'field' }, h('span', {}, 'Image path or URL'), h('input', { type: 'text', value: p.image.src?.startsWith('data:') ? '(embedded image)' : p.image.src || '', onchange: upd((e) => { p.image.src = e.target.value; }) })),
+        h('label', { class: 'field' }, h('span', {}, 'Credit'), h('input', { type: 'text', value: p.image.credit || '', onchange: upd((e) => { p.image.credit = e.target.value; }) })))),
     sec('Caption',
       h('textarea', { rows: 6, value: p.caption || '', oninput: (e) => { p.caption = e.target.value; updCount(); changed(); } }),
       h('div', { class: 'inline', style: 'justify-content:flex-end' }, capCount)),
     sec('Status',
-      h('select', { onchange: (e) => { p.status = e.target.value; changed(); render(); } }, STATUSES.map((s) => h('option', { value: s, selected: s === p.status }, s))),
+      ['idea', 'draft', 'approved'].includes(p.status) // later statuses come from Export PNG and from the AI; set by hand they would only mislead the pipeline
+        ? h('select', { onchange: (e) => { p.status = e.target.value; changed(); render(); } }, ['idea', 'draft', 'approved'].map((s) => h('option', { value: s, selected: s === p.status }, s)))
+        : h('p', {}, h('span', { class: 'chip ' + p.status }, p.status), ' ', h('button', { class: 'linkbtn', onclick: () => { p.status = 'draft'; changed(); render(); } }, 'Back to draft')),
       p.postproxy?.id && h('p', { class: 'hint' }, `PostProxy: ${p.postproxy.status || '?'} (checked ${p.postproxy.checkedAt || 'never'})${p.postproxy.error ? ' · ' + p.postproxy.error : ''}`)),
     (() => {
       const s = sec('Style',
@@ -1090,7 +1104,7 @@ function postEditor(p) {
     })());
   box.querySelector('[data-sec=Status]').append(
     h('div', { class: 'inline', style: 'margin-top:16px' },
-      h('button', { onclick: () => { const c = structuredClone(rawPost(p)); c.status = 'draft'; delete c.postproxy; newPost(c); } }, 'Duplicate this post'),
+      h('button', { onclick: () => { const c = structuredClone(rawPost(p)); c.status = 'draft'; delete c.postproxy; delete c.exported; delete c.sent; newPost(c); } }, 'Duplicate this post'),
       h('button', { onclick: () => deletePost(p) }, 'Delete')));
   return box;
 }
@@ -1117,7 +1131,11 @@ function imagesPanel() {
     if (/^images\//.test(src || '')) item.saved = src;
     selectedImage = { src, credit: item.credit || '', previewUrl: item.thumb };
     const target = imageTarget;
-    if (p) { if (target) { (p.images ||= {})[target] = { src, credit: item.credit || '' }; } else p.image = { src, credit: item.credit || '' }; changed(); }
+    if (p) { // a new photo keeps its place on the page (free, fx…layer); only which part shows (x, y, zoom) resets
+      if (target) { (p.images ||= {})[target] = { src, credit: item.credit || '' }; }
+      else { const keep = Object.fromEntries(Object.entries(p.image || {}).filter(([k]) => ['free', 'fx', 'fy', 'fw', 'fh', 'rot', 'shape', 'layer'].includes(k))); p.image = { ...keep, src, credit: item.credit || '' }; }
+      changed();
+    }
     status.textContent = p ? `Set on "${p.fields.title || p.id}"${target ? ' (' + frameName(target) + ')' : ''}.` : 'Selected. Pick a post to use it.';
     renderSwatches(item.thumb);
     refresh();
@@ -1409,7 +1427,7 @@ function deleteDesign(t) {
     box.textContent = '';
     if (ws.templates.length < 2) { box.append(h('span', { class: 'warn' }, 'This is your only design, so it can\'t be deleted.'), h('button', { class: 'mini', onclick: idle }, 'OK')); return; }
     box.append(h('span', { class: 'warn' }, used ? `Delete “${t.name}”? ${used} post${used > 1 ? 's use' : ' uses'} it and will switch to “${ws.templates.find((x) => x !== t).name}”.` : `Delete “${t.name}”?`),
-      h('span', { class: 'inline' }, h('button', { class: 'danger', onclick: () => { ws.templates = ws.templates.filter((x) => x !== t); changed(); render(); toast(`Deleted “${t.name}”.`); } }, 'Yes, delete it'), h('button', { onclick: idle }, 'Cancel')));
+      h('span', { class: 'inline' }, h('button', { class: 'danger', onclick: () => { const next = ws.templates.find((x) => x !== t).id; for (const q of ws.posts) { if (q.template === t.id) q.template = next; for (const sl of q.slides || []) if (sl.template === t.id) sl.template = next; } ws.templates = ws.templates.filter((x) => x !== t); changed(); render(); toast(`Deleted “${t.name}”.`); } }, 'Yes, delete it'), h('button', { onclick: idle }, 'Cancel')));
   };
   const idle = () => { box.textContent = ''; box.append(h('button', { class: 'mini', 'aria-label': `Delete the design “${t.name}”`, onclick: ask }, 'Delete design')); };
   idle(); return box;
@@ -1451,7 +1469,7 @@ function showControls(label, secName, ctlSel, tokenKeys) {
   railSec = secName ? SECRAIL[secName] : 'style'; applyRail();
   if (secName) { const d = document.querySelector(`#panel [data-sec="${secName}"]`); if (d && !ctlSel) targets.push(d); }
   if (ctlSel) { const n = document.querySelector('#panel ' + ctlSel); if (n) targets.push(n); }
-  if (!secName) tokenKeys.forEach((k) => { const n = document.getElementById('c-' + k.replace('.', '-') + '-o'); const row = n?.closest('.row'); if (row) targets.push(row); });
+  if (!secName) (tokenKeys || []).forEach((k) => { const n = document.getElementById('c-' + k.replace('.', '-') + '-o'); const row = n?.closest('.row'); if (row) targets.push(row); });
   targets.forEach((n) => n.classList.add('hl'));
   targets[0]?.scrollIntoView({ block: 'center', behavior: 'smooth' });
   clearTimeout(hlTimer); hlTimer = setTimeout(() => document.querySelectorAll('.hl').forEach((n) => n.classList.remove('hl')), 3500);
@@ -1470,9 +1488,8 @@ $('#stage').addEventListener('click', (e) => {
   }
   if (hit.matches('[data-logo-box]')) return showControls('the logo', null, null, ['logo.size', 'logo.position']);
   const key = hit.dataset.field || hit.dataset.list;
-  const head = /^(title|big|headline)$/.test(key);
   const f = tplFields(tplFor(currentPost())).find((x) => x.key === key);
-  showControls(`“${f?.label || key}”`, 'Words on the image', `[data-ctl="field:${key}"]`, head ? ['type.displaySize', 'layout.titleWidth'] : ['type.bodySize', 'layout.bodyWidth']);
+  showControls(`“${f?.label || key}”`, 'Words on the image', `[data-ctl="field:${key}"]`);
 });
 
 /* A cut-out's box is mostly transparent: only its visible pixels should count as clicks on the photo. */
@@ -1507,8 +1524,8 @@ let pan = null;
 $('#stage').addEventListener('pointerdown', (e) => {
   if (!ws || tab !== 'posts') return;
   const img = !e.target.closest('.slides') && e.target.closest('.preview img[data-image]'), slot = img && img.getAttribute('data-image'), p = currentPost();
-  if (!slot || !p || img.closest('.float-photo')) return;
-  const rec = slotRec(p, slot), fr = img.parentElement;
+  if (!img || !p || img.closest('.float-photo')) return;
+  const rec = slot ? slotRec(p, slot) : p.image, fr = img.parentElement; // '' = the post's main photo
   if (!rec.src || !img.naturalWidth || !fr.offsetWidth) return;
   const sc = Math.max(fr.offsetWidth / img.naturalWidth, fr.offsetHeight / img.naturalHeight) * (rec.zoom ?? 1); // how big the photo is drawn inside the frame
   const [dx, dy] = (img.dataset.pos || '50 50').trim().split(/\s+/).map(Number);
