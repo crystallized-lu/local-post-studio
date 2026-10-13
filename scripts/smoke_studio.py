@@ -10,6 +10,7 @@ errors = []
 with sync_playwright() as p:
     b = p.chromium.launch()
     pg = b.new_page(viewport={"width":1400,"height":900})
+    pg.set_default_timeout(5000)  # a missing control should fail fast, not hang
     pg.on("pageerror", lambda e: errors.append("PAGEERROR " + str(e)))
     pg.on("console", lambda m: errors.append("CONSOLE " + m.text) if m.type in ("error",) else None)
     pg.goto((root/"studio.html").as_uri(), wait_until="load")
@@ -43,8 +44,8 @@ with sync_playwright() as p:
             r.evaluate("(el,v)=>{el.value=v; el.dispatchEvent(new Event('input',{bubbles:true}))}", (mn+mx)/2)
     step("rail Style", lambda: pg.click('nav.rail button:has-text("Style")'))
     step("wiggle style", wiggle)
-    for sel in pg.query_selector_all('#panel select'):
-        step("select", lambda: sel.select_option(index=min(1, sel.evaluate("e=>e.options.length-1"))))
+    for sel in pg.query_selector_all('#panel select'):  # only the open rail section is visible; hidden selects are not controls
+        if sel.is_visible(): step("select", lambda: sel.select_option(index=min(1, sel.evaluate("e=>e.options.length-1")), timeout=3000))
     step("brand tab", lambda: pg.click('nav.tabs button[data-tab=brand]'))
     step("wiggle brand", wiggle)
     step("open more", lambda: [d.evaluate("e=>e.open=true") for d in pg.query_selector_all('#panel details')])
