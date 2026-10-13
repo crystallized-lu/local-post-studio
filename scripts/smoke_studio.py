@@ -12,15 +12,22 @@ with sync_playwright() as p:
     pg = b.new_page(viewport={"width":1400,"height":900})
     pg.on("pageerror", lambda e: errors.append("PAGEERROR " + str(e)))
     pg.on("console", lambda m: errors.append("CONSOLE " + m.text) if m.type in ("error",) else None)
-    pg.goto((root/"studio.html").as_uri())
+    pg.goto((root/"studio.html").as_uri(), wait_until="load")
     pg.wait_for_timeout(500)
-    # stub folder handle: reads example/workspace.json, swallows writes
-    pg.evaluate("""(text) => {
-      const file = { getFile: async () => new File([window.__ws ?? text], 'workspace.json', {lastModified: 1}), createWritable: async () => ({ write: async (d) => { window.__ws = d; }, close: async () => {} }) };
-      window.__dir = { name: 'example', getFileHandle: async (n) => { if (n==='workspace.json') return file; throw new Error('no '+n); }, getDirectoryHandle: async () => { throw new Error('nodir'); }, queryPermission: async()=>'granted', requestPermission: async()=>'granted' };
-      return useFolder(window.__dir);
-    }""", ws)
-    pg.wait_for_timeout(800)
+    # stub folder handle: reads example/workspace.json, swallows writes. idb() is replaced because a stub with
+    # functions cannot be stored in IndexedDB, and useFolder is not awaited so a hang shows up as missing UI, not a crash.
+    try:
+        pg.evaluate("""(text) => {
+          window.idb = async () => null;
+          const file = { getFile: async () => new File([window.__ws ?? text], 'workspace.json', {lastModified: 1}), createWritable: async () => ({ write: async (d) => { window.__ws = d; }, close: async () => {} }) };
+          window.__dir = { name: 'example', getFileHandle: async (n) => { if (n==='workspace.json') return file; throw new Error('no '+n); }, getDirectoryHandle: async () => { throw new Error('nodir'); }, queryPermission: async()=>'granted', requestPermission: async()=>'granted' };
+          useFolder(window.__dir).catch((e) => console.error('useFolder: ' + e));
+          return 0;
+        }""", ws)
+    except Exception as e:
+        errors.append(f"EVALUATE: {e}")
+    pg.wait_for_timeout(1500)
+    if pg.evaluate("document.body.classList.contains('nows')"): errors.append("WORKSPACE did not open (welcome screen still showing)")
     def step(name, fn):
         try: fn(); pg.wait_for_timeout(250)
         except Exception as e: errors.append(f"STEP {name}: {e}")
