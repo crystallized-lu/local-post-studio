@@ -10,3 +10,4 @@ workspaces.json
 docs/decision-log.md
 .claude/
 .remember/
+__pycache__/
