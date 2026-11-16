@@ -9,6 +9,7 @@ workspaces/
 workspaces.json
 docs/decision-log.md
 .claude/
+.opencode/
 .remember/
 __pycache__/
 *.zip
