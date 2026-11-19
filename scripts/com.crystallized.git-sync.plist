@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.crystallized.git-sync</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/node</string>
+        <string>/Users/aislingmccaffrey/Documents/Claude/Projects/Social Media Planning/local-post-studio/scripts/git-sync.mjs</string>
+        <string>/Users/aislingmccaffrey/Documents/Claude/Projects/Social Media Planning/local-post-studio/workspaces/crystallized-intelligence</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StartInterval</key>
+    <integer>3600</integer>
+    <key>StandardErrorPath</key>
+    <string>/tmp/git-sync.err</string>
+    <key>StandardOutPath</key>
+    <string>/tmp/git-sync.out</string>
+</dict>
+</plist>
